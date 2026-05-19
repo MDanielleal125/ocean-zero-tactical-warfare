@@ -3,12 +3,22 @@
     <head>
         <meta charset="UTF-8">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-        <link rel="stylesheet" href="battle.css" type="text/css" />
+        <link rel="stylesheet" href="css/styles.css" type="text/css" />
         <title>BattleShip Game</title>
+        <style>
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; transform: translateY(0); }
+                to { opacity: 0; transform: translateY(-10px); }
+            }
+        </style>
     </head>
     <body>
         <h1>BattleShip</h1>
-        <h3>Selecciona la posición de tus naves</h3>
+        <h3>Select your ship positions</h3>
         <div class="container">
             <div class="row">
                 <div class="col">
@@ -20,41 +30,41 @@
                     </div>
                 </div>
             </div>
-            <h4>Tus naves:</h4>
+            <h4>Your ships:</h4>
             <div id="ships" class="row">
                 <div class="col"> 
                     <div>
-                        <span>Portaviones</span></br>
-                        <span>Tamaño: 5</span>
+                        <span>Carrier</span><br>
+                        <span>Size: 5</span>
                     </div>
                     <div class="position"></div>
                 </div>
                 <div class="col"> 
                     <div>
-                        <span>Acorazado</span></br>
-                        <span>Tamaño: 4</span>
+                        <span>Battleship</span><br>
+                        <span>Size: 4</span>
                     </div>
                     <div class="position"></div>
                 </div>
                 <div class="col"> 
                     <div>
-                        <span>Submarino</span></br>
-                        <span>Tamaño: 3</span>
+                        <span>Submarine</span><br>
+                        <span>Size: 3</span>
                     </div>
                     <div class="position"></div>
                 </div>
                 <div class="col"> 
                     <div>
-                        <span>Destructor</span></br>
-                        <span>Tamaño: 2</span>
+                        <span>Destroyer</span><br>
+                        <span>Size: 2</span>
                     </div>
                     <div class="position"></div>
                 </div>           
             </div>
             <div class="row">
-                <button id="button" onclick="startGame()">Empezar juego</button>
+                <button id="button" onclick="startGame()">Start Game</button>
             </div>
         </div>
-        <script type="text/javascript" src="battle.js"></script>
+        <script type="module" src="js/main.js"></script>
     </body>
 </html>
