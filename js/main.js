@@ -1,3 +1,11 @@
+// ============================================
+// ES6 Module Imports - MUST be at the top
+// ============================================
+import { EasyAI } from './ai/aiEasy.js';
+
+// ============================================
+// Ship Class
+// ============================================
 class Ship {
     constructor(type, size, quantity) {
         this.type = type;
@@ -21,6 +29,9 @@ class Ship {
     }
 }
 
+// ============================================
+// Board Class
+// ============================================
 class Board {
     constructor(boardElement, boardType, clickHandler) {
         this.boardElement = boardElement;
@@ -95,6 +106,9 @@ class Board {
     }
 }
 
+// ============================================
+// ShipPlacement Class
+// ============================================
 class ShipPlacement {
     constructor(board) {
         this.board = board;
@@ -114,7 +128,10 @@ class ShipPlacement {
     selectShip(shipIndex, orientation) {
         const ship = this.ships[shipIndex];
         if (ship.hasRemaining()) {
-            this.selectedShip = { ...ship, index: shipIndex };
+            // FIX: Mantener instancia intacta, NO usar spread operator
+            // Esto preserva el prototipo y todos los métodos de Ship
+            this.selectedShip = ship;
+            this.selectedShip.index = shipIndex;
             this.selectedShip.setOrientation(orientation);
             return true;
         }
@@ -158,8 +175,9 @@ class ShipPlacement {
     }
 }
 
-import { EasyAI } from './ai/aiEasy.js';
-
+// ============================================
+// Game Class - Main Game Controller
+// ============================================
 class Game {
     constructor() {
         this.boardElement = document.querySelector("#board");
@@ -225,7 +243,11 @@ class Game {
         this.pcBoard.create();
         this.pcShipPlacement = new ShipPlacement(this.pcBoard);
         this.placePCShipsRandomly();
-        document.querySelector("#button").disabled = true;
+        // FIX E2: Use correct button ID (#startGameButton instead of #button)
+        const startButton = document.querySelector("#startGameButton");
+        if (startButton) {
+            startButton.disabled = true;
+        }
     }
 
     placePCShipsRandomly() {
@@ -325,9 +347,14 @@ class Game {
     }
 }
 
+// ============================================
+// Game Initialization & Event Binding
+// ============================================
 const game = new Game();
 game.initialize();
 
-function startGame() {
+// FIX E1: CRITICAL - Bind the start button to game start function
+// This was the main reason the game wasn't starting!
+document.querySelector("#startGameButton").addEventListener("click", () => {
     game.startGame();
-}
+});
