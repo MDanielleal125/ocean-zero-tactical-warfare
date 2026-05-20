@@ -66,6 +66,7 @@ import {
 import { showElement, hideElement } from './utils/domUtils.js';
 import { initNavalMenuBackground } from './ui/navalMenuBackground.js';
 import { initBattleGameBackground } from './ui/backgroundBattle.js';
+import { initTutorial, openTutorial, closeTutorial } from './ui/tutorial.js';
 import {
     initMusicManager,
     unlockAudio,
@@ -463,6 +464,7 @@ class Game {
             this.showMainMenu();
         });
         this.setupMenuControls();
+        initTutorial();
         this.navalMenuBg = initNavalMenuBackground();
         this.battleGameBg = initBattleGameBackground();
         initMusicManager();
@@ -543,6 +545,7 @@ class Game {
     setupMenuControls() {
         document.getElementById('menu-start-pve')?.addEventListener('click', () => this.startNewGame('pve'));
         document.getElementById('menu-start-pvp')?.addEventListener('click', () => this.startNewGame('pvp'));
+        document.getElementById('menu-tutorial-btn')?.addEventListener('click', () => openTutorial());
         document.getElementById('menu-scores-btn')?.addEventListener('click', () => this.showScoresScreen());
         document.getElementById('menu-settings-btn')?.addEventListener('click', () => this.showSettingsScreen());
         document.getElementById('menu-credits-btn')?.addEventListener('click', () => this.showCreditsScreen());
@@ -600,6 +603,7 @@ class Game {
 
     showMainMenu() {
         this.closeIntro();
+        closeTutorial();
         this.hideAllMenus();
         document.getElementById('main-menu')?.classList.remove('hidden');
         document.getElementById('game-app')?.classList.add('hidden');
@@ -619,6 +623,7 @@ class Game {
     }
 
     showSettingsScreen() {
+        closeTutorial();
         this.hideAllMenus();
         document.getElementById('settings-screen')?.classList.remove('hidden');
         playMenuMusic();
@@ -688,6 +693,7 @@ class Game {
     }
 
     showScoresScreen() {
+        closeTutorial();
         this.hideAllMenus();
         document.getElementById('scores-screen')?.classList.remove('hidden');
         this.loadScoreBoard();
@@ -695,6 +701,7 @@ class Game {
     }
 
     showCreditsScreen() {
+        closeTutorial();
         this.hideAllMenus();
         document.getElementById('credits-screen')?.classList.remove('hidden');
         playMenuMusic();
@@ -707,6 +714,7 @@ class Game {
     }
 
     removeActiveOverlays() {
+        closeTutorial();
         ['pause-overlay', 'pass-device-overlay'].forEach(id => {
             const overlay = document.getElementById(id);
             if (overlay) overlay.remove();
