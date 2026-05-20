@@ -1,3 +1,41 @@
+/**
+ * main.js
+ * Entry point. Orchestrates game flow using modular classes.
+ * Imports UI modules (notifications, animations, renderBoard, responsive).
+ * Owner: Daniel (core logic) — UI hooks added by J. Mena (feature/ui)
+ */
+
+import {
+    showHitNotification,
+    showMissNotification,
+    showErrorNotification,
+    showInfoNotification,
+    showEnemyHitNotification,
+    showEnemyMissNotification,
+    showWinnerModal
+} from './ui/notifications.js';
+
+import {
+    animateCellHit,
+    animateCellMiss,
+    animateShipPlacement,
+    animateGameStart,
+    animateTurnChange
+} from './ui/animations.js';
+
+import {
+    renderShipSelectors,
+    updateShipQuantityDisplay,
+    highlightSelectedShipButton,
+    renderTurnIndicator
+} from './ui/renderBoard.js';
+
+import { initResponsiveLayout } from './ui/responsive.js';
+
+// ---------------------------------------------------------------------------
+// Ship
+// ---------------------------------------------------------------------------
+
 class Ship {
     constructor(type, size, quantity) {
         this.type = type;
@@ -21,6 +59,10 @@ class Ship {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Board
+// ---------------------------------------------------------------------------
+
 class Board {
     constructor(boardElement, boardType, clickHandler) {
         this.boardElement = boardElement;
@@ -33,58 +75,54 @@ class Board {
     create() {
         for (let i = 0; i < this.size; i++) {
             let row = [];
-            let rowElement = document.createElement("div");
+            let rowElement = document.createElement('div');
             this.boardElement.appendChild(rowElement);
-            rowElement.className = "myRow";
+            rowElement.className = 'board-row myRow';
 
             for (let j = 0; j < this.size; j++) {
-                let grid = document.createElement("div");
+                let grid = document.createElement('div');
                 rowElement.appendChild(grid);
-                grid.className = "grid";
+                grid.className = 'board-cell grid';
                 grid.id = `${i},${j},${this.boardType}`;
-                grid.addEventListener("click", this.clickHandler);
-                row.push("");
+                grid.addEventListener('click', this.clickHandler);
+                row.push('');
             }
             this.matrix.push(row);
         }
     }
 
     isValidPosition(row, col, orientation, shipSize) {
-        if (orientation === "horizontal") {
+        if (orientation === 'horizontal') {
             return col + shipSize <= this.size;
-        } else if (orientation === "vertical") {
+        } else if (orientation === 'vertical') {
             return row + shipSize <= this.size;
         }
         return false;
     }
 
     isCellEmpty(row, col) {
-        return this.matrix[row][col] === "";
+        return this.matrix[row][col] === '';
     }
 
     placeShip(row, col, orientation, shipSize) {
         const cells = [];
-        if (orientation === "horizontal") {
+        if (orientation === 'horizontal') {
             for (let i = col; i < col + shipSize; i++) {
-                if (!this.isCellEmpty(row, i)) {
-                    return null;
-                }
+                if (!this.isCellEmpty(row, i)) return null;
                 cells.push({ row, col: i });
             }
             for (let i = col; i < col + shipSize; i++) {
-                this.matrix[row][i] = "ship";
-                document.getElementById(`${row},${i},${this.boardType}`).className += " selected";
+                this.matrix[row][i] = 'ship';
+                document.getElementById(`${row},${i},${this.boardType}`).classList.add('selected');
             }
-        } else if (orientation === "vertical") {
+        } else if (orientation === 'vertical') {
             for (let i = row; i < row + shipSize; i++) {
-                if (!this.isCellEmpty(i, col)) {
-                    return null;
-                }
+                if (!this.isCellEmpty(i, col)) return null;
                 cells.push({ row: i, col });
             }
             for (let i = row; i < row + shipSize; i++) {
-                this.matrix[i][col] = "ship";
-                document.getElementById(`${i},${col},${this.boardType}`).className += " selected";
+                this.matrix[i][col] = 'ship';
+                document.getElementById(`${i},${col},${this.boardType}`).classList.add('selected');
             }
         }
         return cells;
@@ -95,6 +133,10 @@ class Board {
     }
 }
 
+// ---------------------------------------------------------------------------
+// ShipPlacement
+// ---------------------------------------------------------------------------
+
 class ShipPlacement {
     constructor(board) {
         this.board = board;
@@ -104,10 +146,10 @@ class ShipPlacement {
 
     initializeShips() {
         return [
-            new Ship("carrier", 5, 1),
-            new Ship("battleship", 4, 1),
-            new Ship("submarine", 3, 1),
-            new Ship("destroyer", 2, 2)
+            new Ship('carrier',    5, 1),
+            new Ship('battleship', 4, 1),
+            new Ship('submarine',  3, 1),
+            new Ship('destroyer',  2, 2)
         ];
     }
 
@@ -115,36 +157,43 @@ class ShipPlacement {
         const ship = this.ships[shipIndex];
         if (ship.hasRemaining()) {
             this.selectedShip = { ...ship, index: shipIndex };
+            this.selectedShip.setOrientation = Ship.prototype.setOrientation;
             this.selectedShip.setOrientation(orientation);
+            highlightSelectedShipButton(shipIndex, orientation);
             return true;
         }
+        showInfoNotification('No ships of this type remaining');
         return false;
     }
 
     placeShipAt(row, col) {
         if (!this.selectedShip) {
-            alert("Debes seleccionar un barco primero");
+            showErrorNotification('Select a ship first');
             return false;
         }
 
         if (!this.selectedShip.hasRemaining()) {
-            alert("No quedan barcos de este tipo disponibles");
+            showInfoNotification('No ships of this type remaining');
             this.selectedShip = null;
             return false;
         }
 
         if (!this.board.isValidPosition(row, col, this.selectedShip.orientation, this.selectedShip.size)) {
-            alert("Selecciona una posición válida");
+            showErrorNotification('Invalid position — ship would go off the board');
             return false;
         }
 
-        const placed = this.board.placeShip(row, col, this.selectedShip.orientation, this.selectedShip.size);
-        if (placed === null) {
-            alert("La posición ya está ocupada");
+        const placedCells = this.board.placeShip(row, col, this.selectedShip.orientation, this.selectedShip.size);
+        if (placedCells === null) {
+            showErrorNotification('Position already occupied by another ship');
             return false;
         }
+
+        // Animate the placed ship cells
+        animateShipPlacement(placedCells, this.board.boardType);
 
         this.ships[this.selectedShip.index].decrement();
+        updateShipQuantityDisplay(this.selectedShip.index, this.ships[this.selectedShip.index].quantity);
         this.selectedShip = null;
         return true;
     }
@@ -158,78 +207,70 @@ class ShipPlacement {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Game
+// ---------------------------------------------------------------------------
+
 class Game {
     constructor() {
-        this.boardElement = document.querySelector("#board");
-        this.boardAttackElement = document.querySelector("#boardAttack");
-        this.playerBoard = null;
-        this.pcBoard = null;
-        this.shipPlacement = null;
-        this.pcShipPlacement = null;
-        this.gameStarted = false;
+        this.boardElement        = document.querySelector('#board');
+        this.boardAttackElement  = document.querySelector('#boardAttack');
+        this.playerBoard         = null;
+        this.pcBoard             = null;
+        this.shipPlacement       = null;
+        this.pcShipPlacement     = null;
+        this.gameStarted         = false;
     }
 
     initialize() {
-        this.playerBoard = new Board(this.boardElement, "player", (e) => this.handlePlayerPlacement(e));
+        this.playerBoard = new Board(
+            this.boardElement,
+            'player',
+            (e) => this.handlePlayerPlacement(e)
+        );
         this.playerBoard.create();
         this.shipPlacement = new ShipPlacement(this.playerBoard);
-        this.createShipSelectors();
-    }
 
-    createShipSelectors() {
-        const positionElements = document.querySelectorAll(".position");
-        positionElements.forEach((positionElement, shipIndex) => {
-            const ships = this.shipPlacement.getShips();
-            
-            const horizontal = document.createElement("div");
-            horizontal.className = "horizontal " + shipIndex;
-            horizontal.addEventListener("click", () => {
-                if (this.shipPlacement.selectShip(shipIndex, "horizontal")) {
-                    console.log(`Selected ${ships[shipIndex].type} horizontal`);
-                } else {
-                    alert("No quedan barcos de este tipo disponibles");
-                }
-            });
-            positionElement.appendChild(horizontal);
+        // Render ship selector panel via UI module
+        renderShipSelectors(
+            this.shipPlacement.getShips(),
+            (index, orientation) => this.shipPlacement.selectShip(index, orientation)
+        );
 
-            const vertical = document.createElement("div");
-            vertical.className = "vertical " + shipIndex;
-            vertical.addEventListener("click", () => {
-                if (this.shipPlacement.selectShip(shipIndex, "vertical")) {
-                    console.log(`Selected ${ships[shipIndex].type} vertical`);
-                } else {
-                    alert("No quedan barcos de este tipo disponibles");
-                }
-            });
-            positionElement.appendChild(vertical);
-        });
-    }
-
-    handlePlayerPlacement(event) {
-        if (this.gameStarted) return;
-        
-        const grid = event.target;
-        const gridID = grid.id.split(",");
-        const row = parseInt(gridID[0]);
-        const col = parseInt(gridID[1]);
-        
-        this.shipPlacement.placeShipAt(row, col);
+        // Initialize responsive layout
+        initResponsiveLayout();
     }
 
     startGame() {
         this.gameStarted = true;
-        this.pcBoard = new Board(this.boardAttackElement, "pc", (e) => this.handlePlayerShot(e));
+
+        this.pcBoard = new Board(
+            this.boardAttackElement,
+            'pc',
+            (e) => this.handlePlayerShot(e)
+        );
         this.pcBoard.create();
         this.pcShipPlacement = new ShipPlacement(this.pcBoard);
         this.placePCShipsRandomly();
-        document.querySelector("#button").disabled = true;
+
+        document.querySelector('#button').disabled = true;
+
+        // Show turn indicator
+        const indicator = document.getElementById('turn-indicator');
+        if (indicator) indicator.style.display = 'inline-block';
+        renderTurnIndicator('player');
+
+        // Animate boards sliding in
+        animateGameStart();
+
+        showInfoNotification('Battle started — fire at the enemy waters!');
     }
 
     placePCShipsRandomly() {
         const ships = this.pcShipPlacement.getShips();
-        const orientations = ["horizontal", "vertical"];
+        const orientations = ['horizontal', 'vertical'];
 
-        ships.forEach((ship, index) => {
+        ships.forEach(ship => {
             while (ship.hasRemaining()) {
                 const orientation = orientations[Math.floor(Math.random() * orientations.length)];
                 const row = Math.floor(Math.random() * 10);
@@ -245,23 +286,40 @@ class Game {
         });
     }
 
-    handlePlayerShot(event) {
-        const grid = event.target;
-        const gridID = grid.id.split(",");
+    handlePlayerPlacement(event) {
+        if (this.gameStarted) return;
+
+        const gridID = event.target.id.split(',');
         const row = parseInt(gridID[0]);
         const col = parseInt(gridID[1]);
+
+        this.shipPlacement.placeShipAt(row, col);
+    }
+
+    handlePlayerShot(event) {
+        const gridID = event.target.id.split(',');
+        const row    = parseInt(gridID[0]);
+        const col    = parseInt(gridID[1]);
         const matrix = this.pcBoard.getMatrix();
 
-        if (matrix[row][col] === "ship") {
-            alert("Muy bien, acertaste. Vuelve a jugar");
-            matrix[row][col] = "hit";
-            document.getElementById(`${row},${col},pc`).className += " hit";
-            this.checkWinner(matrix, "player");
-        } else if (matrix[row][col] === "") {
-            alert("Mal! tu disparo cayó al agua");
-            matrix[row][col] = "miss";
-            document.getElementById(`${row},${col},pc`).className += " miss";
+        if (matrix[row][col] === 'ship') {
+            matrix[row][col] = 'hit';
+            document.getElementById(`${row},${col},pc`).classList.add('hit');
+            animateCellHit(row, col, 'pc');
+            showHitNotification('Direct hit! Enemy ship struck! 💥');
+            this.checkWinner(matrix, 'player');
+
+        } else if (matrix[row][col] === '') {
+            matrix[row][col] = 'miss';
+            document.getElementById(`${row},${col},pc`).classList.add('miss');
+            animateCellMiss(row, col, 'pc');
+            showMissNotification('Splash! Shot went into the water');
+            renderTurnIndicator('pc');
+            animateTurnChange('pc');
             this.handlePCShot();
+
+        } else if (matrix[row][col] === 'hit' || matrix[row][col] === 'miss') {
+            showErrorNotification('You already fired at this cell');
         }
     }
 
@@ -270,39 +328,43 @@ class Game {
         const row = Math.floor(Math.random() * 10);
         const col = Math.floor(Math.random() * 10);
 
-        if (matrix[row][col] === "ship") {
-            alert("Ops! te han disparado");
-            matrix[row][col] = "hit";
-            document.getElementById(`${row},${col},player`).className += " hit";
-            this.checkWinner(matrix, "pc");
+        if (matrix[row][col] === 'ship') {
+            matrix[row][col] = 'hit';
+            document.getElementById(`${row},${col},player`).classList.add('hit');
+            animateCellHit(row, col, 'player');
+            showEnemyHitNotification('Your ship has been hit! 🔥');
+            this.checkWinner(matrix, 'pc');
             this.handlePCShot();
-        } else if (matrix[row][col] === "hit" || matrix[row][col] === "miss") {
+
+        } else if (matrix[row][col] === 'hit' || matrix[row][col] === 'miss') {
+            // Re-roll if already shot
             this.handlePCShot();
+
         } else {
-            alert("El disparo del pc cayó al agua");
-            matrix[row][col] = "miss";
-            document.getElementById(`${row},${col},player`).className += " miss";
+            matrix[row][col] = 'miss';
+            document.getElementById(`${row},${col},player`).classList.add('miss');
+            animateCellMiss(row, col, 'player');
+            showEnemyMissNotification('Enemy shot missed — your turn! ⚓');
+            renderTurnIndicator('player');
+            animateTurnChange('player');
         }
     }
 
     checkWinner(matrix, player) {
         for (let i = 0; i < 10; i++) {
-            const shipsRemaining = matrix[i].filter(cell => cell === "ship");
-            if (shipsRemaining.length > 0) {
-                return;
-            }
+            if (matrix[i].some(cell => cell === 'ship')) return;
         }
-        if (player === "pc") {
-            alert("Ha ganado el PC");
-        } else {
-            alert("GANASTE!!!");
-        }
+        showWinnerModal(player === 'pc' ? 'pc' : 'player');
     }
 }
+
+// ---------------------------------------------------------------------------
+// Bootstrap the game
+// ---------------------------------------------------------------------------
 
 const game = new Game();
 game.initialize();
 
-function startGame() {
+document.getElementById('button').addEventListener('click', () => {
     game.startGame();
-}
+});
