@@ -1,0 +1,309 @@
+/* =========================================================
+   Battle game screen — immersive ocean background
+   (game-app only; does not affect board/UI colors)
+   ========================================================= */
+
+#game-app.game-app {
+    position: relative;
+    isolation: isolate;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    background: transparent;
+}
+
+#game-app .game-app__header,
+#game-app .game-app__layout {
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Background stack ── */
+.battle-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    --parallax-x: 0px;
+    --parallax-y: 0px;
+    --parallax-deep-x: 0px;
+    --parallax-deep-y: 0px;
+    --pointer-x: 50%;
+    --pointer-y: 50%;
+    filter: blur(0);
+}
+
+.battle-bg__layer {
+    position: absolute;
+    inset: 0;
+    will-change: transform;
+}
+
+/* Deep ocean gradient + depth */
+.battle-bg__depth {
+    z-index: 0;
+    background:
+        radial-gradient(ellipse 90% 70% at var(--pointer-x) 42%, rgba(28, 88, 130, 0.22) 0%, transparent 55%),
+        radial-gradient(ellipse 120% 80% at 50% 55%, rgba(12, 52, 88, 0.35) 0%, transparent 62%),
+        linear-gradient(180deg, #0a2238 0%, #061a2e 28%, #041525 55%, #030f1c 100%);
+    transform: translate(var(--parallax-deep-x), var(--parallax-deep-y));
+    transition: transform 0.12s ease-out;
+}
+
+/* CSS wave parallax layers */
+.battle-bg__waves {
+    z-index: 1;
+    opacity: 0.85;
+    transform: translate(var(--parallax-x), var(--parallax-y));
+    transition: transform 0.12s ease-out;
+}
+
+.battle-bg__wave {
+    position: absolute;
+    left: -8%;
+    width: 116%;
+    height: 38%;
+    border-radius: 45% 55% 0 0 / 100% 100% 0 0;
+    opacity: 0.55;
+}
+
+.battle-bg__wave--1 {
+    bottom: 8%;
+    background: linear-gradient(180deg, rgba(40, 110, 165, 0.35) 0%, rgba(20, 70, 115, 0.12) 100%);
+    animation: battle-wave-drift 14s ease-in-out infinite;
+}
+
+.battle-bg__wave--2 {
+    bottom: 2%;
+    height: 32%;
+    background: linear-gradient(180deg, rgba(30, 95, 150, 0.28) 0%, rgba(15, 55, 95, 0.08) 100%);
+    animation: battle-wave-drift 18s ease-in-out infinite reverse;
+    opacity: 0.45;
+}
+
+.battle-bg__wave--3 {
+    bottom: -4%;
+    height: 28%;
+    background: linear-gradient(180deg, rgba(55, 140, 195, 0.2) 0%, transparent 85%);
+    animation: battle-wave-drift 22s ease-in-out infinite;
+    opacity: 0.35;
+}
+
+.battle-bg__wave--4 {
+    bottom: 14%;
+    height: 22%;
+    background: linear-gradient(90deg, transparent, rgba(120, 200, 255, 0.08), transparent);
+    animation: battle-wave-drift 11s ease-in-out infinite reverse;
+    opacity: 0.4;
+    border-radius: 50%;
+}
+
+@keyframes battle-wave-drift {
+    0%, 100% { transform: translateX(0) scaleY(1); }
+    50% { transform: translateX(-2.5%) scaleY(1.04); }
+}
+
+.battle-bg__canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+    opacity: 0.75;
+}
+
+/* Rising bubbles */
+.battle-bg__bubbles {
+    z-index: 3;
+    transform: translate(calc(var(--parallax-x) * 0.5), calc(var(--parallax-y) * 0.4));
+}
+
+.battle-bg__bubble {
+    position: absolute;
+    bottom: -5%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(200, 235, 255, 0.55), rgba(80, 160, 210, 0.15));
+    box-shadow: 0 0 6px rgba(150, 220, 255, 0.2);
+    opacity: 0;
+    animation: battle-bubble-rise linear infinite;
+}
+
+@keyframes battle-bubble-rise {
+    0% {
+        transform: translateY(0) translateX(0);
+        opacity: 0;
+    }
+    8% { opacity: 0.45; }
+    85% { opacity: 0.25; }
+    100% {
+        transform: translateY(-105vh) translateX(var(--bubble-drift, 0px));
+        opacity: 0;
+    }
+}
+
+/* Distant ship silhouettes */
+.battle-bg__silhouettes {
+    z-index: 1;
+    opacity: 0.35;
+    transform: translate(calc(var(--parallax-deep-x) * 0.6), calc(var(--parallax-deep-y) * 0.5));
+}
+
+.battle-bg__ship {
+    position: absolute;
+    bottom: 22%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(20, 50, 75, 0.9), transparent);
+    border-radius: 2px;
+    filter: blur(0.5px);
+}
+
+.battle-bg__ship::before,
+.battle-bg__ship::after {
+    content: '';
+    position: absolute;
+    background: rgba(15, 40, 62, 0.85);
+}
+
+.battle-bg__ship--1 {
+    left: 8%;
+    width: clamp(4rem, 12vw, 7rem);
+    animation: battle-ship-drift 48s linear infinite;
+}
+
+.battle-bg__ship--1::before {
+    left: 20%;
+    bottom: 100%;
+    width: 3px;
+    height: 14px;
+}
+
+.battle-bg__ship--2 {
+    right: 12%;
+    width: clamp(5rem, 14vw, 9rem);
+    animation: battle-ship-drift 62s linear infinite reverse;
+    bottom: 26%;
+    opacity: 0.7;
+}
+
+.battle-bg__ship--2::before {
+    left: 35%;
+    bottom: 100%;
+    width: 2px;
+    height: 18px;
+}
+
+.battle-bg__ship--3 {
+    left: 42%;
+    width: clamp(3rem, 8vw, 5rem);
+    bottom: 18%;
+    opacity: 0.5;
+    animation: battle-ship-drift 38s linear infinite;
+}
+
+@keyframes battle-ship-drift {
+    0% { transform: translateX(0); }
+    50% { transform: translateX(12px); }
+    100% { transform: translateX(0); }
+}
+
+/* Water shimmer / reflection */
+.battle-bg__shimmer {
+    z-index: 2;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(140, 210, 255, 0.06) 48%,
+        rgba(180, 230, 255, 0.1) 50%,
+        rgba(140, 210, 255, 0.06) 52%,
+        transparent 60%
+    );
+    background-size: 200% 100%;
+    animation: battle-shimmer-sweep 12s ease-in-out infinite;
+    opacity: 0.7;
+    mix-blend-mode: screen;
+    transform: translate(var(--parallax-x), var(--parallax-y));
+}
+
+@keyframes battle-shimmer-sweep {
+    0%, 100% { background-position: 120% 0; }
+    50% { background-position: -20% 0; }
+}
+
+/* Horizon smoke haze */
+.battle-bg__smoke {
+    z-index: 1;
+    background:
+        radial-gradient(ellipse 80% 40% at 30% 18%, rgba(100, 130, 155, 0.12) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 35% at 70% 22%, rgba(90, 120, 145, 0.1) 0%, transparent 50%);
+    animation: battle-smoke-drift 20s ease-in-out infinite alternate;
+}
+
+@keyframes battle-smoke-drift {
+    0% { opacity: 0.6; transform: translateX(0); }
+    100% { opacity: 0.85; transform: translateX(8px); }
+}
+
+/* Distant battle flash */
+.battle-bg__flash {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(255, 200, 140, 0) 0%, transparent 45%);
+    opacity: 0;
+}
+
+.battle-bg__flash--active {
+    animation: battle-flash-fade 0.45s ease-out forwards;
+}
+
+@keyframes battle-flash-fade {
+    0% { opacity: 0.35; }
+    100% { opacity: 0; }
+}
+
+/* Contrast overlay — keeps boards readable */
+.battle-bg__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 75% 65% at 50% 48%, rgba(4, 14, 28, 0.08) 0%, rgba(4, 14, 28, 0.42) 72%),
+        linear-gradient(180deg, rgba(2, 8, 18, 0.35) 0%, rgba(2, 8, 18, 0.15) 35%, rgba(2, 8, 18, 0.4) 100%);
+}
+
+/* Vignette — focus on play area center */
+.battle-bg__vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 55% 50% at 50% 46%, transparent 0%, rgba(0, 8, 20, 0.55) 100%),
+        radial-gradient(ellipse 100% 80% at 50% 50%, transparent 35%, rgba(0, 5, 15, 0.45) 100%);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .battle-bg__wave,
+    .battle-bg__bubble,
+    .battle-bg__shimmer,
+    .battle-bg__smoke,
+    .battle-bg__ship,
+    .battle-bg__flash--active {
+        animation: none !important;
+    }
+
+    .battle-bg__layer,
+    .battle-bg__depth {
+        transform: none !important;
+        transition: none !important;
+    }
+
+    .battle-bg__bubble {
+        opacity: 0.2;
+    }
+}

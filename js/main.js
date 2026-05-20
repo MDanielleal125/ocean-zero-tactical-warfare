@@ -65,6 +65,7 @@ import {
 
 import { showElement, hideElement } from './utils/domUtils.js';
 import { initNavalMenuBackground } from './ui/navalMenuBackground.js';
+import { initBattleGameBackground } from './ui/backgroundBattle.js';
 import {
     initMusicManager,
     unlockAudio,
@@ -463,6 +464,7 @@ class Game {
         });
         this.setupMenuControls();
         this.navalMenuBg = initNavalMenuBackground();
+        this.battleGameBg = initBattleGameBackground();
         initMusicManager();
         playMenuMusic();
         this.startIntroSequence();
