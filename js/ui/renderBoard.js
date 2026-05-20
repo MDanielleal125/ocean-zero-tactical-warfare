@@ -1,9 +1,12 @@
 /**
  * renderBoard.js
  * Handles all DOM rendering for game boards and ship selectors.
- * Responsible for: board grid creation, cell state updates, ship selector UI, turn indicator.
+ * Responsible for: board grid creation, cell state updates, ship selector UI, turn indicator,
+ * and ship placement hover preview.
  * Owner: J. Mena (feature/ui)
  */
+
+import { clearClassesFromAll } from '../utils/domUtils.js';
 
 const BOARD_SIZE = 10;
 const COL_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
@@ -229,4 +232,100 @@ function getShipDisplayName(type) {
         destroyer: 'Destroyer'
     };
     return names[type] || type;
+}
+
+// ---------------------------------------------------------------------------
+// Placement hover preview
+// ---------------------------------------------------------------------------
+
+/** CSS classes used for hover preview — cleared on each mouseleave. */
+const PREVIEW_CLASSES = ['preview-valid', 'preview-invalid'];
+
+/**
+ * Enables a real-time hover preview on the player board during ship placement.
+ * Highlights cells green if placement is valid, red if blocked or out of bounds.
+ *
+ * @param {string} boardType - Board type key ('player')
+ * @param {Function} getSelectedShip - Returns the currently selected ship object or null
+ * @param {Function} getMatrix - Returns the current board 2D matrix
+ */
+export function enablePlacementPreview(boardType, getSelectedShip, getMatrix) {
+    const cells = document.querySelectorAll(
+        `[id$=",${boardType}"].board-cell, [id$=",${boardType}"].grid`
+    );
+
+    cells.forEach(cell => {
+        cell.addEventListener('mouseover', () => handleCellMouseOver(cell, boardType, getSelectedShip, getMatrix));
+        cell.addEventListener('mouseleave', () => clearPreviewClasses());
+    });
+}
+
+/**
+ * Removes all preview event listeners by clearing preview CSS classes.
+ * Call this when the placement phase ends.
+ */
+export function disablePlacementPreview() {
+    clearPreviewClasses();
+}
+
+/**
+ * Handles mouseover on a placement cell: computes projected ship cells,
+ * validates each, and applies preview-valid or preview-invalid CSS classes.
+ *
+ * @param {HTMLElement} cell - The hovered cell element
+ * @param {string} boardType - Board type key
+ * @param {Function} getSelectedShip - Returns selected ship or null
+ * @param {Function} getMatrix - Returns board matrix
+ */
+function handleCellMouseOver(cell, boardType, getSelectedShip, getMatrix) {
+    clearPreviewClasses();
+
+    const ship = getSelectedShip();
+    if (!ship) return;
+
+    const [rowStr, colStr] = cell.id.split(',');
+    const row = parseInt(rowStr);
+    const col = parseInt(colStr);
+    const matrix = getMatrix();
+    const projectedCells = computeProjectedCells(row, col, ship.size, ship.orientation);
+
+    projectedCells.forEach(pos => {
+        const isOutOfBounds = pos.row < 0 || pos.row > 9 || pos.col < 0 || pos.col > 9;
+        const isOccupied    = !isOutOfBounds && matrix[pos.row][pos.col] !== '';
+        const isInvalid     = isOutOfBounds || isOccupied;
+
+        if (!isOutOfBounds) {
+            const target = document.getElementById(`${pos.row},${pos.col},${boardType}`);
+            if (target && !target.classList.contains('selected')) {
+                target.classList.add(isInvalid ? 'preview-invalid' : 'preview-valid');
+            }
+        }
+    });
+}
+
+/**
+ * Computes the list of {row, col} positions a ship would occupy.
+ * @param {number} startRow - Starting row
+ * @param {number} startCol - Starting column
+ * @param {number} size - Ship size
+ * @param {string} orientation - 'horizontal' or 'vertical'
+ * @returns {Array<{row: number, col: number}>}
+ */
+function computeProjectedCells(startRow, startCol, size, orientation) {
+    const cells = [];
+    for (let i = 0; i < size; i++) {
+        if (orientation === 'horizontal') {
+            cells.push({ row: startRow, col: startCol + i });
+        } else {
+            cells.push({ row: startRow + i, col: startCol });
+        }
+    }
+    return cells;
+}
+
+/**
+ * Clears all hover preview CSS classes from every cell in the DOM.
+ */
+function clearPreviewClasses() {
+    clearClassesFromAll('.board-cell, .grid', PREVIEW_CLASSES);
 }

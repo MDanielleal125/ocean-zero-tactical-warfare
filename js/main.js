@@ -27,10 +27,14 @@ import {
     renderShipSelectors,
     updateShipQuantityDisplay,
     highlightSelectedShipButton,
-    renderTurnIndicator
+    renderTurnIndicator,
+    enablePlacementPreview,
+    disablePlacementPreview
 } from './ui/renderBoard.js';
 
 import { initResponsiveLayout } from './ui/responsive.js';
+
+import { showElement } from './utils/domUtils.js';
 
 // ---------------------------------------------------------------------------
 // Ship
@@ -172,7 +176,7 @@ class ShipPlacement {
             return false;
         }
 
-        if (!this.selectedShip.hasRemaining()) {
+        if (this.selectedShip.quantity <= 0) {
             showInfoNotification('No ships of this type remaining');
             this.selectedShip = null;
             return false;
@@ -237,6 +241,13 @@ class Game {
             (index, orientation) => this.shipPlacement.selectShip(index, orientation)
         );
 
+        // Hover preview: shows ghost of ship on board cells while placing
+        enablePlacementPreview(
+            'player',
+            () => this.shipPlacement.selectedShip,
+            () => this.playerBoard.getMatrix()
+        );
+
         // Initialize responsive layout
         initResponsiveLayout();
     }
@@ -255,9 +266,11 @@ class Game {
 
         document.querySelector('#button').disabled = true;
 
+        // Disable hover preview — placement phase is over
+        disablePlacementPreview();
+
         // Show turn indicator
-        const indicator = document.getElementById('turn-indicator');
-        if (indicator) indicator.style.display = 'inline-block';
+        showElement('turn-indicator');
         renderTurnIndicator('player');
 
         // Animate boards sliding in

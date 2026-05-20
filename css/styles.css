@@ -619,6 +619,26 @@ h4 {
     box-shadow: 0 6px 25px rgba(30, 144, 255, 0.55);
 }
 
+/* ── Placement Hover Preview ── */
+
+/* Valid placement preview — pulsing green-blue highlight */
+.board-cell.preview-valid,
+.grid.preview-valid {
+    background: rgba(0, 200, 120, 0.25);
+    border-color: #00c878;
+    box-shadow: 0 0 8px rgba(0, 200, 120, 0.4);
+    transition: background 0.08s ease, border-color 0.08s ease;
+}
+
+/* Invalid placement preview — red warning highlight */
+.board-cell.preview-invalid,
+.grid.preview-invalid {
+    background: rgba(232, 64, 64, 0.25);
+    border-color: #e84040;
+    box-shadow: 0 0 8px rgba(232, 64, 64, 0.35);
+    transition: background 0.08s ease, border-color 0.08s ease;
+}
+
 /* ── Animations ── */
 @keyframes hit-burst {
     0%   { transform: scale(1);    box-shadow: 0 0 0px rgba(232, 64, 64, 0); }
