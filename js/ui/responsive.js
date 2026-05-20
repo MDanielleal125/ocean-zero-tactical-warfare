@@ -4,6 +4,8 @@
  * Owner: J. Mena (feature/ui)
  */
 
+import { refreshAllBoardShipSprites } from './shipSprites.js';
+
 const BREAKPOINTS = {
     mobile: 576,
     tablet: 768,
@@ -141,6 +143,8 @@ function scaleBoardCells() {
     document.querySelectorAll('#board, #boardAttack').forEach(board => {
         board.style.transform = '';
     });
+
+    refreshAllBoardShipSprites();
 }
 
 /**

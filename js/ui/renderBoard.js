@@ -7,6 +7,10 @@
  */
 
 import { clearClassesFromAll } from '../utils/domUtils.js';
+import {
+    clearPlacementPreviewSprite,
+    updatePlacementPreviewSprite
+} from './shipSprites.js';
 
 const BOARD_SIZE = 10;
 const COL_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
@@ -24,6 +28,10 @@ export function renderBoard(boardElement, boardType, clickHandler) {
     boardElement.classList.add('game-board', `game-board--${boardType}`);
 
     renderColumnLabels(boardElement);
+
+    const gridRoot = document.createElement('div');
+    gridRoot.className = 'board-grid';
+    boardElement.appendChild(gridRoot);
 
     const matrix = [];
 
@@ -54,7 +62,7 @@ export function renderBoard(boardElement, boardType, clickHandler) {
             row.push('');
         }
 
-        boardElement.appendChild(rowElement);
+        gridRoot.appendChild(rowElement);
         matrix.push(row);
     }
 
@@ -294,6 +302,9 @@ export function enablePlacementPreview(boardType, getSelectedShip, getMatrix) {
  */
 export function disablePlacementPreview() {
     clearPreviewClasses();
+    clearPlacementPreviewSprite('player1');
+    clearPlacementPreviewSprite('player2');
+    clearPlacementPreviewSprite('player');
 }
 
 /**
@@ -307,6 +318,7 @@ export function disablePlacementPreview() {
  */
 function handleCellMouseOver(cell, boardType, getSelectedShip, getMatrix) {
     clearPreviewClasses();
+    clearPlacementPreviewSprite(boardType);
 
     const ship = getSelectedShip();
     if (!ship) return;
@@ -317,10 +329,14 @@ function handleCellMouseOver(cell, boardType, getSelectedShip, getMatrix) {
     const matrix = getMatrix();
     const projectedCells = computeProjectedCells(row, col, ship.size, ship.orientation);
 
+    let previewValid = true;
+
     projectedCells.forEach(pos => {
         const isOutOfBounds = pos.row < 0 || pos.row > 9 || pos.col < 0 || pos.col > 9;
         const isOccupied    = !isOutOfBounds && matrix[pos.row][pos.col] !== '';
         const isInvalid     = isOutOfBounds || isOccupied;
+
+        if (isInvalid) previewValid = false;
 
         if (!isOutOfBounds) {
             const target = document.getElementById(`${pos.row},${pos.col},${boardType}`);
@@ -329,6 +345,8 @@ function handleCellMouseOver(cell, boardType, getSelectedShip, getMatrix) {
             }
         }
     });
+
+    updatePlacementPreviewSprite(boardType, projectedCells, ship.type, previewValid);
 }
 
 /**
@@ -356,6 +374,10 @@ function computeProjectedCells(startRow, startCol, size, orientation) {
  */
 function clearPreviewClasses() {
     clearClassesFromAll('.board-cell, .grid', PREVIEW_CLASSES);
+    document.querySelectorAll('.game-board--ship-sprites').forEach((boardEl) => {
+        const type = boardEl.className.match(/game-board--(\w+)/)?.[1];
+        if (type) clearPlacementPreviewSprite(type);
+    });
 }
 
 /**

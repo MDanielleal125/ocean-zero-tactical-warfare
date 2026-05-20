@@ -40,6 +40,12 @@ import { updateCellState } from './ui/renderBoard.js';
 
 import { initResponsiveLayout, resetCellZoom } from './ui/responsive.js';
 import {
+    initShipSpriteScaling,
+    notifyShipPlaced,
+    syncBoardShipSprites,
+    clearBoardShipSprites
+} from './ui/shipSprites.js';
+import {
     getIsProjectileActive,
     setBoardsInputLocked,
     playShotVisual
@@ -109,13 +115,16 @@ class Ship {
 // ---------------------------------------------------------------------------
 
 class Board {
-    constructor(boardElement, boardType, clickHandler) {
+    constructor(boardElement, boardType, clickHandler, options = {}) {
         this.boardElement = boardElement;
         this.boardType = boardType;
         this.matrix = [];
         this.clickHandler = clickHandler;
         this.size = 10;
         this.placedShips = [];
+        /** Solo la flota propia (#board) muestra cascos; el tablero de ataque (#boardAttack) no. */
+        this.showHullSprites = options.showHullSprites !== false
+            && boardElement?.id !== 'boardAttack';
     }
 
     create(initialMatrix = null, clickHandler = this.clickHandler, revealShips = true) {
@@ -123,6 +132,11 @@ class Board {
         this.matrix = renderBoard(this.boardElement, this.boardType, this.clickHandler);
         if (initialMatrix) {
             this.applyMatrix(initialMatrix, revealShips);
+        }
+        if (this.placedShips?.length) {
+            syncBoardShipSprites(this);
+        } else if (this.showHullSprites === false) {
+            clearBoardShipSprites(this.boardElement);
         }
     }
 
@@ -151,16 +165,41 @@ class Board {
         return this.matrix[row][col] === '';
     }
 
+    canPlaceShipAt(row, col, orientation, shipSize) {
+        if (!this.isValidPosition(row, col, orientation, shipSize)) return false;
+
+        if (orientation === 'horizontal') {
+            for (let i = col; i < col + shipSize; i++) {
+                if (!this.isCellEmpty(row, i)) return false;
+            }
+            return true;
+        }
+
+        if (orientation === 'vertical') {
+            for (let i = row; i < row + shipSize; i++) {
+                if (!this.isCellEmpty(i, col)) return false;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
     placeShip(row, col, orientation, shipSize, shipType = 'ship') {
+        if (!this.canPlaceShipAt(row, col, orientation, shipSize)) {
+            return null;
+        }
+
         const cells = [];
         if (orientation === 'horizontal') {
             for (let i = col; i < col + shipSize; i++) {
-                if (!this.isCellEmpty(row, i)) return null;
                 cells.push({ row, col: i });
             }
             for (let i = col; i < col + shipSize; i++) {
                 this.matrix[row][i] = 'ship';
-                document.getElementById(`${row},${i},${this.boardType}`).classList.add('selected');
+                if (this.showHullSprites) {
+                    document.getElementById(`${row},${i},${this.boardType}`)?.classList.add('selected');
+                }
             }
         } else if (orientation === 'vertical') {
             for (let i = row; i < row + shipSize; i++) {
@@ -169,17 +208,23 @@ class Board {
             }
             for (let i = row; i < row + shipSize; i++) {
                 this.matrix[i][col] = 'ship';
-                document.getElementById(`${i},${col},${this.boardType}`).classList.add('selected');
+                if (this.showHullSprites) {
+                    document.getElementById(`${i},${col},${this.boardType}`)?.classList.add('selected');
+                }
             }
         }
 
-        if (cells.length) {
-            this.placedShips.push({
-                type: shipType,
-                cells: [...cells],
-                sunk: false
-            });
+        if (!cells.length) {
+            return null;
         }
+
+        this.placedShips.push({
+            type: shipType,
+            cells: [...cells],
+            sunk: false,
+            orientation
+        });
+        notifyShipPlaced(this);
 
         return cells;
     }
@@ -298,18 +343,44 @@ class ShipPlacement {
         return this.placeShipAt(row, col);
     }
 
-    placeAllShipsRandomly() {
+    getValidPlacements(shipSize) {
+        const options = [];
         const orientations = ['horizontal', 'vertical'];
 
+        orientations.forEach((orientation) => {
+            for (let row = 0; row < this.board.size; row++) {
+                for (let col = 0; col < this.board.size; col++) {
+                    if (this.board.canPlaceShipAt(row, col, orientation, shipSize)) {
+                        options.push({ row, col, orientation });
+                    }
+                }
+            }
+        });
+
+        return options;
+    }
+
+    tryPlaceShipAtRandom(shipIndex) {
+        const ship = this.ships[shipIndex];
+        if (!ship?.hasRemaining()) return false;
+
+        const options = this.getValidPlacements(ship.size);
+        if (!options.length) return false;
+
+        const pick = options[Math.floor(Math.random() * options.length)];
+        if (!this.selectShip(shipIndex, pick.orientation)) return false;
+        return this.placeShipAt(pick.row, pick.col, { silent: true });
+    }
+
+    placeAllShipsRandomly() {
+        let failed = false;
+
         this.ships.forEach((ship, shipIndex) => {
-            let attempts = 0;
-            while (ship.hasRemaining() && attempts < 800) {
-                attempts++;
-                const orientation = orientations[Math.floor(Math.random() * orientations.length)];
-                const row = Math.floor(Math.random() * 10);
-                const col = Math.floor(Math.random() * 10);
-                this.selectShip(shipIndex, orientation);
-                this.placeShipAt(row, col, { silent: true });
+            while (ship.hasRemaining()) {
+                if (!this.tryPlaceShipAtRandom(shipIndex)) {
+                    failed = true;
+                    break;
+                }
             }
         });
 
@@ -322,6 +393,8 @@ class ShipPlacement {
                 'No se colocaron todas las naves. Pulsa de nuevo o colócalas manualmente.'
             );
         }
+
+        return !failed && this.allShipsPlaced();
     }
 
     clearSelection() {
@@ -439,11 +512,11 @@ class Game {
                 (index, orientation) => this.shipPlacement.selectShip(index, orientation)
             );
             enablePlacementPreview(
-                'player',
+                this.playerBoard.boardType,
                 () => this.shipPlacement.selectedShip,
                 () => this.playerBoard.getMatrix()
             );
-            enableShipDragDrop('player', (shipIndex, row, col, orientation) => {
+            enableShipDragDrop(this.playerBoard.boardType, (shipIndex, row, col, orientation) => {
                 this.shipPlacement.placeShipByIndex(shipIndex, row, col, orientation);
             });
             this.shipPlacement.placeAllShipsRandomly();
@@ -455,6 +528,7 @@ class Game {
         this.updateStartButtonState();
 
         initResponsiveLayout();
+        initShipSpriteScaling();
     }
 
     updatePlayerStatusLabel(message) {
@@ -796,14 +870,20 @@ class Game {
 
         showAttackBoardSection();
         this.boardAttackElement.innerHTML = '';
+        clearBoardShipSprites(this.boardAttackElement);
         this.pcBoard = new Board(
             this.boardAttackElement,
             'pc',
-            (e) => this.handlePlayerShot(e)
+            (e) => this.handlePlayerShot(e),
+            { showHullSprites: false }
         );
         this.pcBoard.create();
         this.pcShipPlacement = new ShipPlacement(this.pcBoard);
         this.placePCShipsRandomly();
+
+        if (this.playerBoard?.placedShips?.length) {
+            syncBoardShipSprites(this.playerBoard);
+        }
 
         const startBtn = document.querySelector('#button');
         if (startBtn) startBtn.disabled = true;
@@ -870,6 +950,8 @@ class Game {
         this.playerBoard.create(this.playerBoard.getMatrix(), null, false);
 
         enemyBoard.boardElement = this.boardAttackElement;
+        enemyBoard.showHullSprites = false;
+        clearBoardShipSprites(this.boardAttackElement);
         enemyBoard.create(enemyBoard.getMatrix(), (e) => this.handlePlayerShot(e), false);
 
         renderTurnIndicator(player);
@@ -1156,13 +1238,15 @@ class Game {
 
             if (data.pcBoard) {
                 showAttackBoardSection();
+                clearBoardShipSprites(this.boardAttackElement);
                 this.pcBoard = new Board(
                     this.boardAttackElement,
                     'pc',
-                    (e) => this.handlePlayerShot(e)
+                    (e) => this.handlePlayerShot(e),
+                    { showHullSprites: false }
                 );
                 this.pcBoard.create();
-                this.restoreBoardSnapshot(this.pcBoard, data.pcBoard, true);
+                this.restoreBoardSnapshot(this.pcBoard, data.pcBoard, false);
             }
 
             disablePlacementPreview();
@@ -1180,9 +1264,12 @@ class Game {
     }
 
     buildBoardFromSave(element, boardType, snapshot, clickHandler) {
-        const board = new Board(element, boardType, clickHandler);
+        const board = new Board(element, boardType, clickHandler, {
+            showHullSprites: element?.id !== 'boardAttack'
+        });
         board.create(snapshot.matrix, clickHandler, true);
         board.placedShips = snapshot.placedShips ? [...snapshot.placedShips] : [];
+        syncBoardShipSprites(board);
         return board;
     }
 
@@ -1199,8 +1286,10 @@ class Game {
 
                 if (state === 'ship') {
                     updateCellState(r, c, board.boardType, 'ship');
-                    const cell = document.getElementById(`${r},${c},${board.boardType}`);
-                    if (cell) cell.classList.add('selected');
+                    if (board.showHullSprites) {
+                        const cell = document.getElementById(`${r},${c},${board.boardType}`);
+                        if (cell) cell.classList.add('selected');
+                    }
                 } else if (state) {
                     updateCellState(r, c, board.boardType, state);
                 }
@@ -1208,6 +1297,7 @@ class Game {
         }
 
         board.placedShips = snapshot.placedShips ? [...snapshot.placedShips] : [];
+        syncBoardShipSprites(board);
     }
 
     restoreShipPlacementFromSave(data) {
@@ -1344,7 +1434,6 @@ class Game {
     }
 
     placePCShipsRandomly() {
-        const orientations = ['horizontal', 'vertical'];
         const maxPlacementAttempts = 5;
         let placementSuccessful = false;
 
@@ -1357,22 +1446,11 @@ class Game {
             const ships = this.pcShipPlacement.getShips();
 
             ships.forEach((ship, shipIndex) => {
-                let attempts = 0;
-                while (ship.hasRemaining() && attempts < 5000) {
-                    attempts++;
-                    const orientation = orientations[Math.floor(Math.random() * orientations.length)];
-                    const row = Math.floor(Math.random() * 10);
-                    const col = Math.floor(Math.random() * 10);
-
-                    if (this.pcBoard.isValidPosition(row, col, orientation, ship.size)) {
-                        const placed = this.pcBoard.placeShip(row, col, orientation, ship.size, ship.type);
-                        if (placed !== null) {
-                            ship.decrement();
-                        }
+                while (ship.hasRemaining()) {
+                    if (!this.pcShipPlacement.tryPlaceShipAtRandom(shipIndex)) {
+                        placementSuccessful = false;
+                        break;
                     }
-                }
-                if (ship.hasRemaining()) {
-                    placementSuccessful = false;
                 }
             });
         }
@@ -1562,6 +1640,7 @@ class Game {
             }
 
             const winnerPlayer = this.getWinnerPlayerId(attackerId);
+            syncBoardShipSprites(targetBoard);
             return this.checkWinner(matrix, winnerPlayer);
         }
 
@@ -1577,6 +1656,7 @@ class Game {
         }
 
         appendShotLogEntry(`${actorLabel}: ${coord} — AGUA`);
+        syncBoardShipSprites(targetBoard);
         return false;
     }
 

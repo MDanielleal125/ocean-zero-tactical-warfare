@@ -759,6 +759,7 @@ body:not(.theme-dark) .board-section__title {
 .game-board,
 #board,
 #boardAttack {
+    position: relative;
     display: inline-block;
     background: var(--color-bg-panel);
     border: 2px solid var(--color-border);
@@ -781,6 +782,12 @@ body:not(.theme-dark) #boardAttack {
     box-shadow:
         0 0 2.5rem rgba(30, 144, 255, 0.28),
         inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Área de celdas (10×10) — sprites anclados aquí, no a etiquetas */
+.board-grid {
+    position: relative;
+    display: inline-block;
 }
 
 .board-labels-row {
@@ -834,6 +841,7 @@ body:not(.theme-dark) #boardAttack {
         transform 0.1s ease,
         box-shadow 0.15s ease;
     position: relative;
+    z-index: 2;
     overflow: hidden;
     flex-shrink: 0;
 }
@@ -863,11 +871,83 @@ body:not(.theme-dark) .grid {
     border-color: #0d47a1;
 }
 
+/* Sprites de casco — sustituyen el relleno sólido de celdas con nave */
+.game-board--ship-sprites .board-cell.selected,
+.game-board--ship-sprites .grid.selected {
+    background: rgba(21, 101, 192, 0.14);
+    border-color: rgba(13, 71, 161, 0.45);
+    box-shadow: none;
+}
+
+.board-grid .ship-sprites-layer {
+    position: absolute;
+    left: calc(var(--label-size) + var(--board-gap));
+    top: 0;
+    width: calc(10 * var(--cell-size) + 9 * var(--board-gap));
+    height: calc(10 * var(--cell-size) + 9 * var(--board-gap));
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* Cada sprite = exactamente N celdas */
+.ship-sprite {
+    position: absolute;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    pointer-events: none;
+    overflow: hidden;
+    transition: opacity 0.25s ease, filter 0.25s ease;
+}
+
+/* Horizontal: permite ver casco rotado centrado */
+.ship-sprite--grid-h {
+    overflow: visible;
+}
+
+.ship-sprite__inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    box-sizing: border-box;
+    pointer-events: none;
+}
+
+.ship-sprite__img {
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+}
+
+.ship-sprite--sunk .ship-sprite__img {
+    opacity: 0.45;
+    filter: grayscale(0.65);
+}
+
+.ship-sprite--preview {
+    opacity: 0.62;
+    z-index: 5;
+}
+
+.ship-sprite--preview-invalid .ship-sprite__img {
+    filter: sepia(0.35) hue-rotate(-35deg) drop-shadow(0 0 6px rgba(232, 64, 64, 0.55));
+}
+
 body.theme-dark .board-cell.selected,
 body.theme-dark .grid.selected {
     background: linear-gradient(135deg, #1565c0, #1e3d6e);
     border-color: var(--color-ship-glow);
     box-shadow: 0 0 0.4rem rgba(33, 150, 243, 0.45);
+}
+
+body.theme-dark .game-board--ship-sprites .board-cell.selected,
+body.theme-dark .game-board--ship-sprites .grid.selected {
+    background: rgba(21, 101, 192, 0.18);
+    border-color: rgba(33, 150, 243, 0.35);
+    box-shadow: none;
 }
 
 .board-cell.hit,

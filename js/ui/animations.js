@@ -5,6 +5,8 @@
  * Owner: J. Mena (feature/ui)
  */
 
+import { refreshAllBoardShipSprites } from './shipSprites.js';
+
 /**
  * Plays the explosion animation on a cell that was hit.
  * @param {number} row - Row index of the cell
@@ -67,6 +69,8 @@ export function animateGameStart() {
             board.style.transform = 'translateY(0)';
         }, index * 200);
     });
+
+    setTimeout(() => refreshAllBoardShipSprites(), 650);
 }
 
 /**
