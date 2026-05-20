@@ -1,7 +1,6 @@
 /**
  * responsive.js
  * Handles responsive layout behavior for mobile, tablet, and desktop viewports.
- * Responsible for: breakpoint detection, layout switching, cell size scaling.
  * Owner: J. Mena (feature/ui)
  */
 
@@ -19,7 +18,6 @@ const CELL_ZOOM_MAX = 20;
 
 /**
  * Initializes responsive layout detection and attaches a resize listener.
- * Should be called once on game load.
  */
 export function initResponsiveLayout() {
     applyLayoutForCurrentSize();
@@ -39,13 +37,15 @@ export function handleResizeEvent() {
 function applyLayoutForCurrentSize() {
     const width = window.innerWidth;
 
-    // UI-019: stack boards below 768px
     if (width < BREAKPOINTS.tablet) {
         applyMobileLayout();
+        document.body.dataset.layout = 'mobile';
     } else if (width < BREAKPOINTS.desktop) {
         applyTabletLayout();
+        document.body.dataset.layout = 'tablet';
     } else {
         applyDesktopLayout();
+        document.body.dataset.layout = 'desktop';
     }
 
     scaleBoardCells();
@@ -62,7 +62,7 @@ export function applyMobileLayout() {
 }
 
 /**
- * Applies the tablet layout (boards side by side, smaller cells).
+ * Applies the tablet layout (boards side by side when space allows).
  */
 function applyTabletLayout() {
     const container = document.getElementById('boards-container');
@@ -82,14 +82,29 @@ export function applyDesktopLayout() {
 }
 
 /**
- * Calculates the optimal cell size based on current viewport width.
- * @returns {number} Cell size in pixels
+ * Base cell size from viewport — keeps boards readable without overflow.
+ * @returns {number} Cell size in pixels (used with --cell-size for board grid only)
  */
 export function getCellSize() {
     const width = window.innerWidth;
-    if (width < BREAKPOINTS.mobile) return 26;
-    if (width < BREAKPOINTS.tablet) return 30;
-    return 38;
+    const boardsVisible = document.querySelector('.board-section--attack:not(.hidden)')
+        ? 2
+        : 1;
+    const available = Math.min(width * 0.9, 520 * boardsVisible);
+    const labelPad = 28;
+    const gaps = 9 * 2;
+    const fromWidth = Math.floor((available - labelPad - gaps) / 10);
+
+    if (width < BREAKPOINTS.mobile) {
+        return Math.min(34, Math.max(24, fromWidth));
+    }
+    if (width < BREAKPOINTS.tablet) {
+        return Math.min(38, Math.max(28, fromWidth));
+    }
+    if (width < BREAKPOINTS.desktop) {
+        return Math.min(42, Math.max(32, fromWidth));
+    }
+    return Math.min(48, Math.max(36, fromWidth));
 }
 
 /**
@@ -118,6 +133,10 @@ export function resetCellZoom() {
 function scaleBoardCells() {
     const size = getCellSize() + cellZoomBonus;
     document.documentElement.style.setProperty('--cell-size', `${size}px`);
+    document.documentElement.style.setProperty(
+        '--label-size',
+        `${Math.max(18, Math.round(size * 0.55))}px`
+    );
 
     document.querySelectorAll('#board, #boardAttack').forEach(board => {
         board.style.transform = '';

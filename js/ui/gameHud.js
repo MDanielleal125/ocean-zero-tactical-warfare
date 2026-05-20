@@ -140,10 +140,16 @@ export function initThemeToggle() {
     const btn = document.getElementById('theme-toggle');
     if (!btn) return;
 
+    const syncLabel = () => {
+        btn.textContent = document.body.classList.contains('theme-dark')
+            ? 'Modo claro'
+            : 'Modo oscuro';
+    };
+
+    syncLabel();
     btn.addEventListener('click', () => {
         document.body.classList.toggle('theme-dark');
-        const isDark = document.body.classList.contains('theme-dark');
-        btn.textContent = isDark ? 'Modo claro' : 'Modo oscuro';
+        syncLabel();
     });
 }
 

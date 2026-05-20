@@ -13,7 +13,7 @@
         >
         <link rel="stylesheet" href="css/styles.css">
     </head>
-    <body>
+    <body class="theme-dark">
         <div id="welcome-screen" class="welcome-screen">
             <div class="welcome-screen__content welcome-screen__content--intro">
                 <h2 class="welcome-screen__title">Ocean Zero Warfare</h2>
@@ -40,9 +40,9 @@
                     <button type="button" id="menu-start-pvp" class="btn btn-outline-primary">2 Jugadores local</button>
                 </div>
                 <div class="menu-screen__links">
-                    <button type="button" id="menu-scores-btn" class="btn btn-sm btn-outline-light">Puntuaciones</button>
-                    <button type="button" id="menu-settings-btn" class="btn btn-sm btn-outline-light">Configuración</button>
-                    <button type="button" id="menu-credits-btn" class="btn btn-sm btn-outline-light">Créditos</button>
+                    <button type="button" id="menu-scores-btn" class="btn btn-outline-light">Puntuaciones</button>
+                    <button type="button" id="menu-settings-btn" class="btn btn-outline-light">Configuración</button>
+                    <button type="button" id="menu-credits-btn" class="btn btn-outline-light">Créditos</button>
                 </div>
             </div>
         </div>
@@ -112,87 +112,86 @@
             </div>
         </div>
 
-        <div id="game-app" class="container game-app hidden">
-            <h1>BattleShip</h1>
-            <h3>Selecciona la posición de tus naves</h3>
+        <div id="game-app" class="game-app hidden">
+            <header class="game-app__header">
+                <h1 class="game-app__title">BattleShip</h1>
+                <p class="game-app__subtitle">Selecciona la posición de tus naves</p>
+            </header>
 
-            <aside id="game-instructions" class="game-instructions" aria-label="Game instructions">
-                <p><strong>Guía rápida:</strong> elige nave y orientación (↔ / ↕ o <kbd>R</kbd>),
-                coloca con clic, usa <em>Colocación aleatoria</em> si lo prefieres,
-                luego dispara en <em>Ataque</em> cuando sea tu turno.</p>
-            </aside>
-
-            <aside id="left-panel" class="left-panel">
-                <div class="left-panel__controls">
-                    <button type="button" id="pause-resume-btn" class="btn btn-sm btn-outline-secondary">Pausar</button>
-                    <button type="button" id="reset-game-btn" class="btn btn-sm btn-outline-danger">Reiniciar partida</button>
-                    <button type="button" id="save-game-btn" class="btn btn-sm btn-outline-primary">Guardar</button>
-                    <button type="button" id="load-game-btn" class="btn btn-sm btn-outline-primary">Cargar</button>
-                    <button type="button" id="mode-toggle-btn" class="btn btn-sm btn-outline-warning">Modo 2 jugadores</button>
-                </div>
-
-                <section id="shot-log-section" class="shot-log-section hidden">
-                    <h4>Historial de disparos</h4>
-                    <ol id="shot-log" class="shot-log list-unstyled"></ol>
-                </section>
-
-                <section id="match-history-section" class="match-history-section">
-                    <h4>Historial de partidas</h4>
-                    <ol id="match-history" class="match-history list-unstyled"></ol>
-                </section>
-            </aside>
-
-            <div id="game-hud" class="game-hud row justify-content-center g-2">
-                <div class="col-auto">
-                    <div id="turn-indicator" class="turn-indicator" style="display:none;"></div>
-                    <div id="player-status" class="player-status"></div>
-                </div>
-                <div class="col-auto">
-                    <div id="match-timer" class="match-timer">Tiempo: 00:00</div>
-                </div>
-                <div class="col-auto">
-                    <div id="sunk-counter" class="sunk-counter">
-                        Hundidos — Tú: <span id="player-sunk-count">0</span>
-                        | Enemigo: <span id="enemy-sunk-count">0</span>
+            <div class="game-app__layout">
+                <aside id="left-panel" class="left-panel">
+                    <div class="left-panel__controls">
+                        <button type="button" id="pause-resume-btn" class="btn btn-outline-secondary">Pausar</button>
+                        <button type="button" id="reset-game-btn" class="btn btn-outline-danger">Reiniciar partida</button>
+                        <button type="button" id="save-game-btn" class="btn btn-outline-primary">Guardar</button>
+                        <button type="button" id="load-game-btn" class="btn btn-outline-primary">Cargar</button>
+                        <button type="button" id="mode-toggle-btn" class="btn btn-outline-warning">Modo 2 jugadores</button>
                     </div>
-                </div>
-                <div class="col-auto">
-                    <button type="button" id="theme-toggle" class="btn btn-sm btn-outline-secondary" title="Alternar modo oscuro">
-                        Modo oscuro
-                    </button>
-                </div>
-                <div class="col-auto board-zoom-controls">
-                    <button type="button" id="board-zoom-out" class="btn btn-sm btn-outline-secondary" title="Reducir tablero">−</button>
-                    <button type="button" id="board-zoom-in" class="btn btn-sm btn-outline-secondary" title="Ampliar tablero">+</button>
-                </div>
+
+                    <section id="shot-log-section" class="shot-log-section hidden">
+                        <h4>Historial de disparos</h4>
+                        <ol id="shot-log" class="shot-log list-unstyled"></ol>
+                    </section>
+
+                    <section id="match-history-section" class="match-history-section">
+                        <h4>Historial de partidas</h4>
+                        <ol id="match-history" class="match-history list-unstyled"></ol>
+                    </section>
+                </aside>
+
+                <main class="game-app__main">
+                    <aside id="game-instructions" class="game-instructions" aria-label="Game instructions">
+                        <p><strong>Guía rápida:</strong> elige nave y orientación (↔ / ↕ o <kbd>R</kbd>),
+                        coloca con clic, usa <em>Colocación aleatoria</em> si lo prefieres,
+                        luego dispara en <em>Ataque</em> cuando sea tu turno.</p>
+                    </aside>
+
+                    <div id="game-hud" class="game-hud">
+                        <div class="game-hud__group game-hud__group--turn">
+                            <div id="turn-indicator" class="turn-indicator" style="display:none;"></div>
+                            <div id="player-status" class="player-status"></div>
+                        </div>
+                        <div id="match-timer" class="match-timer game-hud__chip">Tiempo: 00:00</div>
+                        <div id="sunk-counter" class="sunk-counter game-hud__chip">
+                            Hundidos — Tú: <span id="player-sunk-count">0</span>
+                            | Enemigo: <span id="enemy-sunk-count">0</span>
+                        </div>
+                        <button type="button" id="theme-toggle" class="btn btn-outline-secondary game-hud__btn" title="Alternar modo oscuro">
+                            Modo oscuro
+                        </button>
+                        <div class="board-zoom-controls game-hud__zoom">
+                            <button type="button" id="board-zoom-out" class="btn btn-outline-secondary" title="Reducir tablero">−</button>
+                            <button type="button" id="board-zoom-in" class="btn btn-outline-secondary" title="Ampliar tablero">+</button>
+                        </div>
+                    </div>
+
+                    <div id="boards-container" class="boards-row layout--desktop">
+                        <div class="board-section">
+                            <p id="own-board-title" class="board-section__title">Tu flota</p>
+                            <div class="board-section__viewport">
+                                <div id="board"></div>
+                            </div>
+                        </div>
+                        <div class="board-section board-section--attack hidden">
+                            <p id="attack-board-title" class="board-section__title">Ataque</p>
+                            <div class="board-section__viewport">
+                                <div id="boardAttack"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <section class="ships-area">
+                        <h4 id="ships-section-title">Tus naves</h4>
+                        <div id="ships" class="ships-row"></div>
+                        <div class="ship-actions">
+                            <button type="button" id="random-placement-btn" class="btn btn-secondary">
+                                Colocación aleatoria
+                            </button>
+                            <button type="button" id="button" class="btn btn-primary btn-play">Iniciar batalla</button>
+                        </div>
+                    </section>
+                </main>
             </div>
-
-            <div id="boards-container" class="row layout--desktop boards-row">
-                <div class="col board-section">
-                    <p id="own-board-title" class="board-section__title">Tu flota</p>
-                    <div id="board"></div>
-                </div>
-                <div class="col board-section board-section--attack hidden">
-                    <p id="attack-board-title" class="board-section__title">Ataque</p>
-                    <div id="boardAttack"></div>
-                </div>
-            </div>
-
-            <h4 id="ships-section-title">Tus naves</h4>
-            <div id="ships" class="row ships-row"></div>
-
-            <div class="row ship-actions justify-content-center g-2 mt-2">
-                <div class="col-auto">
-                    <button type="button" id="random-placement-btn" class="btn btn-secondary">
-                        Colocación aleatoria
-                    </button>
-                </div>
-                <div class="col-auto">
-                    <button type="button" id="button" class="btn btn-primary">Iniciar batalla</button>
-                </div>
-            </div>
-
-            
         </div>
 
         <script type="module" src="js/main.js"></script>
