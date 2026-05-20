@@ -57,3 +57,12 @@ export function playExplosionSound() {
     playTone(90, 0.2, 'sawtooth');
     setTimeout(() => playTone(55, 0.25, 'triangle'), 60);
 }
+
+/**
+ * Sonar ping for naval menu background (optional click feedback).
+ */
+export function playSonarPing() {
+    playTone(520, 0.08, 'sine');
+    setTimeout(() => playTone(280, 0.22, 'sine'), 70);
+    setTimeout(() => playTone(180, 0.35, 'triangle'), 140);
+}

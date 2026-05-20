@@ -54,6 +54,7 @@ import {
 } from './ui/gameHud.js';
 
 import { showElement, hideElement } from './utils/domUtils.js';
+import { initNavalMenuBackground } from './ui/navalMenuBackground.js';
 
 const SHIP_DISPLAY_NAMES = {
     carrier: 'Portaaviones',
@@ -372,6 +373,7 @@ class Game {
             this.showMainMenu();
         });
         this.setupMenuControls();
+        this.navalMenuBg = initNavalMenuBackground();
         this.startIntroSequence();
     }
 
