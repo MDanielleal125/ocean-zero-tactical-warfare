@@ -1558,3 +1558,97 @@ body[data-layout='tablet'] .game-app__layout {
 body[data-layout='mobile'] .game-app__layout {
     grid-template-columns: 1fr;
 }
+
+/* ── Disparos animados (executeShot / Bloob.io) ── */
+.shot-effects-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 15000;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.shot-projectile {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff 0%, #9ad4ff 40%, #1a6bb8 100%);
+    box-shadow: 0 0 10px rgba(120, 200, 255, 0.95), 0 0 18px rgba(30, 144, 255, 0.5);
+    will-change: transform;
+    z-index: 2;
+}
+
+.shot-impact {
+    position: fixed;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.shot-impact--miss {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(210, 240, 255, 0.9) 0%, rgba(90, 170, 230, 0.35) 50%, transparent 72%);
+    animation: shot-splash-pop 0.48s ease-out forwards;
+}
+
+.shot-impact--hit {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 230, 140, 0.95) 0%, rgba(255, 90, 50, 0.65) 40%, transparent 70%);
+    animation: shot-explosion-pop 0.52s ease-out forwards;
+}
+
+@keyframes shot-splash-pop {
+    0% { transform: translate(-50%, -50%) scale(0.15); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.65); opacity: 0; }
+}
+
+@keyframes shot-explosion-pop {
+    0% { transform: translate(-50%, -50%) scale(0.12); opacity: 1; }
+    55% { transform: translate(-50%, -50%) scale(1.25); opacity: 0.95; }
+    100% { transform: translate(-50%, -50%) scale(1.85); opacity: 0; }
+}
+
+.shot-particle {
+    position: fixed;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: shot-particle-fly 0.55s ease-out forwards;
+}
+
+.shot-particle--miss {
+    background: rgba(170, 220, 255, 0.9);
+    box-shadow: 0 0 6px rgba(120, 200, 255, 0.6);
+}
+
+.shot-particle--hit {
+    background: rgba(255, 190, 90, 0.95);
+    box-shadow: 0 0 8px rgba(255, 100, 50, 0.75);
+}
+
+@keyframes shot-particle-fly {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% {
+        transform: translate(calc(-50% + var(--shot-px)), calc(-50% + var(--shot-py))) scale(0.15);
+        opacity: 0;
+    }
+}
+
+.game-app--shot-locked #boards-container,
+.game-app--shot-locked #ships,
+.game-app--shot-locked .ship-actions {
+    pointer-events: none;
+    cursor: wait;
+}
+
+.game-app--shot-locked .board-cell,
+.game-app--shot-locked .grid {
+    cursor: wait !important;
+}

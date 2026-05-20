@@ -59,6 +59,14 @@ export function playExplosionSound() {
 }
 
 /**
+ * Splash de agua cuando un disparo falla.
+ */
+export function playSplashSound() {
+    playTone(300, 0.07, 'sine');
+    setTimeout(() => playTone(190, 0.12, 'triangle'), 45);
+}
+
+/**
  * Sonar ping for naval menu background (optional click feedback).
  */
 export function playSonarPing() {

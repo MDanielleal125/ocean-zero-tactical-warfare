@@ -39,7 +39,11 @@ import {
 import { updateCellState } from './ui/renderBoard.js';
 
 import { initResponsiveLayout, resetCellZoom } from './ui/responsive.js';
-import { playShotSound, playExplosionSound } from './ui/audio.js';
+import {
+    getIsProjectileActive,
+    setBoardsInputLocked,
+    playShotVisual
+} from './ui/shotAnimation.js';
 import {
     initWelcomeScreen,
     startMatchTimer,
@@ -370,6 +374,7 @@ class Game {
         this.isIntroPlaying = false;
         this.cleanupWelcomeScreen = null;
         this.aiState = null;
+        this.isProjectileActive = false;
     }
 
     bootstrap() {
@@ -1386,119 +1391,249 @@ class Game {
     }
 
     handlePlayerShot(event) {
-        if (this.isPaused) return;
+        if (this.isPaused || this.isProjectileActive || getIsProjectileActive()) return;
 
         const gridID = event.target.id.split(',');
         const row = parseInt(gridID[0], 10);
         const col = parseInt(gridID[1], 10);
+        const ctx = this.resolveHumanShotContext(row, col);
 
-        // Determine target board depending on mode/turn
-        let targetBoard = this.pcBoard;
-        let targetType = 'pc';
-        let actorLabel = this.playerName;
+        if (!ctx) return;
 
-        if (this.mode === 'pvp') {
-            if (this.currentTurn === 'player1') {
-                targetBoard = this.player2Board;
-                targetType = 'player2';
-                actorLabel = this.playerName;
-            } else if (this.currentTurn === 'player2') {
-                targetBoard = this.player1Board;
-                targetType = 'player1';
-                actorLabel = this.player2Name;
-            }
+        void this.executeShot({ ...ctx, targetRow: row, targetCol: col });
+    }
+
+    /**
+     * Flujo central de disparo — jugador, PC y PvP usan el mismo camino.
+     * @param {object} params
+     * @returns {Promise<{ cancelled?: boolean, isHit?: boolean, gameEnded?: boolean }>}
+     */
+    async executeShot(params) {
+        const {
+            attackerId,
+            targetRow,
+            targetCol,
+            targetBoard,
+            targetBoardType,
+            actorLabel,
+            sunkSide,
+            _internal = false
+        } = params;
+
+        // Solo bloquear disparos humanos concurrentes; el PC/PvP interno no debe cancelarse.
+        if (!_internal && (this.isProjectileActive || getIsProjectileActive())) {
+            return { cancelled: true };
         }
 
-        if (!targetBoard) return;
+        if (!targetBoard) return { cancelled: true };
 
         const matrix = targetBoard.getMatrix();
+        const cellState = matrix[targetRow][targetCol];
 
-        if (matrix[row][col] === 'hit' || matrix[row][col] === 'miss') {
-            showErrorNotification('Ya disparaste a esta celda');
+        if (cellState === 'hit' || cellState === 'miss') {
+            if (attackerId !== 'pc') {
+                showErrorNotification('Ya disparaste a esta celda');
+            }
+            return { cancelled: true };
+        }
+
+        if (cellState !== 'ship' && cellState !== '') {
+            return { cancelled: true };
+        }
+
+        const isHit = cellState === 'ship';
+
+        console.log('Attacker:', attackerId);
+        console.log('Target:', targetRow, targetCol);
+
+        if (!_internal) {
+            setBoardsInputLocked(true);
+        }
+
+        this.isProjectileActive = true;
+
+        let gameEnded = false;
+
+        try {
+            await playShotVisual(attackerId, targetRow, targetCol, targetBoardType, isHit);
+
+            gameEnded = this.applyShotResult({
+                targetRow,
+                targetCol,
+                targetBoard,
+                targetBoardType,
+                actorLabel,
+                attackerId,
+                sunkSide,
+                isHit
+            });
+
+            console.log('Shot applied');
+        } finally {
+            this.isProjectileActive = false;
+        }
+
+        if (gameEnded) {
+            setBoardsInputLocked(false);
+            return { isHit, gameEnded: true };
+        }
+
+        if (!isHit) {
+            await this.afterShotTurnChange(attackerId);
+            console.log('Turn changed');
+        }
+
+        if (!_internal) {
+            setBoardsInputLocked(false);
+        }
+
+        return { isHit, gameEnded: false };
+    }
+
+    resolveHumanShotContext(row, col) {
+        if (this.mode === 'pvp') {
+            if (this.currentTurn === 'player1') {
+                return {
+                    attackerId: 'player1',
+                    targetBoard: this.player2Board,
+                    targetBoardType: 'player2',
+                    actorLabel: this.playerName,
+                    sunkSide: 'enemy'
+                };
+            }
+            if (this.currentTurn === 'player2') {
+                return {
+                    attackerId: 'player2',
+                    targetBoard: this.player1Board,
+                    targetBoardType: 'player1',
+                    actorLabel: this.player2Name,
+                    sunkSide: 'enemy'
+                };
+            }
+            return null;
+        }
+
+        return {
+            attackerId: 'player',
+            targetBoard: this.pcBoard,
+            targetBoardType: 'pc',
+            actorLabel: this.playerName,
+            sunkSide: 'enemy'
+        };
+    }
+
+    resolvePCShotContext() {
+        if (!this.playerBoard) return null;
+        return {
+            attackerId: 'pc',
+            targetBoard: this.playerBoard,
+            targetBoardType: this.playerBoard.boardType,
+            actorLabel: 'PC',
+            sunkSide: 'player'
+        };
+    }
+
+    /**
+     * Aplica hit/miss tras la animación (lógica existente, sin cambios de reglas).
+     * @returns {boolean} true si la partida terminó
+     */
+    applyShotResult({ targetRow, targetCol, targetBoard, targetBoardType, actorLabel, attackerId, sunkSide, isHit }) {
+        const matrix = targetBoard.getMatrix();
+        const coord = `${String.fromCharCode(65 + targetCol)}${targetRow + 1}`;
+        this.stats.totalShots++;
+
+        if (isHit) {
+            matrix[targetRow][targetCol] = 'hit';
+            this.stats.hits++;
+            document.getElementById(`${targetRow},${targetCol},${targetBoardType}`)?.classList.add('hit');
+            animateCellHit(targetRow, targetCol, targetBoardType);
+
+            if (attackerId === 'pc') {
+                showEnemyHitNotification('¡Te han impactado!');
+            } else {
+                showHitNotification('¡Impacto directo!');
+            }
+
+            appendShotLogEntry(`${actorLabel}: ${coord} — IMPACTO`);
+
+            const sunk = this.processSunkShip(targetBoard, sunkSide);
+            if (attackerId === 'pc') {
+                this.updateAIStateAfterHit(targetRow, targetCol, sunk);
+            }
+
+            const winnerPlayer = this.getWinnerPlayerId(attackerId);
+            return this.checkWinner(matrix, winnerPlayer);
+        }
+
+        matrix[targetRow][targetCol] = 'miss';
+        document.getElementById(`${targetRow},${targetCol},${targetBoardType}`)?.classList.add('miss');
+        animateCellMiss(targetRow, targetCol, targetBoardType);
+
+        if (attackerId === 'pc') {
+            showEnemyMissNotification('El enemigo falló — tu turno');
+            this.updateAIStateAfterMiss(targetRow, targetCol);
+        } else {
+            showMissNotification('Agua — disparo fallido');
+        }
+
+        appendShotLogEntry(`${actorLabel}: ${coord} — AGUA`);
+        return false;
+    }
+
+    getWinnerPlayerId(attackerId) {
+        if (attackerId === 'pc') return 'pc';
+        if (this.mode === 'pvp') return attackerId;
+        return 'player';
+    }
+
+    async afterShotTurnChange(attackerId) {
+        if (this.mode === 'pve' && attackerId !== 'pc') {
+            renderTurnIndicator('pc');
+            animateTurnChange('pc');
+            await this.runPCShotSequence();
             return;
         }
 
-        playShotSound();
-        this.stats.totalShots++;
+        if (this.mode === 'pvp' && attackerId !== 'pc') {
+            this.switchPvPTurn();
+        }
 
-        if (matrix[row][col] === 'ship') {
-            matrix[row][col] = 'hit';
-            this.stats.hits++;
-            const cell = document.getElementById(`${row},${col},${targetType}`);
-            if (cell) cell.classList.add('hit');
-            animateCellHit(row, col, targetType);
-            playExplosionSound();
-            showHitNotification('¡Impacto directo!');
-            appendShotLogEntry(`${actorLabel}: ${String.fromCharCode(65 + col)}${row + 1} — IMPACTO`);
-            this.processSunkShip(targetBoard, this.mode === 'pvp' ? (this.currentTurn === 'player1' ? 'enemy' : 'player') : 'enemy');
-            this.checkWinner(matrix, this.mode === 'pvp' ? (this.currentTurn === 'player1' ? 'player1' : 'player2') : 'player');
-        } else if (matrix[row][col] === '') {
-            matrix[row][col] = 'miss';
-            const cellEl = document.getElementById(`${row},${col},${targetType}`);
-            if (cellEl) cellEl.classList.add('miss');
-            animateCellMiss(row, col, targetType);
-            showMissNotification('Agua — disparo fallido');
-            appendShotLogEntry(`${actorLabel}: ${String.fromCharCode(65 + col)}${row + 1} — AGUA`);
-
-            if (this.mode === 'pve') {
-                renderTurnIndicator('pc');
-                animateTurnChange('pc');
-                this.handlePCShot();
-            } else {
-                this.switchPvPTurn();
-            }
+        if (attackerId === 'pc') {
+            renderTurnIndicator('player');
+            animateTurnChange('player');
         }
     }
 
-    handlePCShot() {
-        if (this.isPaused) return;
-        if (!this.playerBoard) return;
+    /** Turno del PC — cada disparo pasa por executeShot (misma animación que el jugador). */
+    async runPCShotSequence() {
+        if (this.isPaused || !this.playerBoard) return;
 
         const matrix = this.playerBoard.getMatrix();
-        let continueTurn = true;
+        let pcContinues = true;
 
-        while (continueTurn && this.gameStarted && !this.isPaused) {
+        while (pcContinues && this.gameStarted && !this.isPaused) {
             const shot = this.selectAICell(matrix);
             if (!shot) break;
-            const { row, col, strategy } = shot;
-            const cellValue = matrix[row][col];
-            const isHit = cellValue === 'ship';
 
-            playShotSound();
-            console.log('Difficulty:', this.difficulty);
-            console.log('Target selected:', row, col);
-            console.log('Cell value:', cellValue);
-            console.log('Hit:', isHit);
+            const ctx = this.resolvePCShotContext();
+            if (!ctx) break;
 
-            if (isHit) {
-                matrix[row][col] = 'hit';
-                const boardType = this.playerBoard.boardType;
-                document.getElementById(`${row},${col},${boardType}`)?.classList.add('hit');
-                animateCellHit(row, col, boardType);
-                playExplosionSound();
-                showEnemyHitNotification('¡Te han impactado!');
-                appendShotLogEntry(`PC: ${String.fromCharCode(65 + col)}${row + 1} — IMPACTO`);
-                this.stats.totalShots++;
-                this.stats.hits++;
+            const result = await this.executeShot({
+                ...ctx,
+                targetRow: shot.row,
+                targetCol: shot.col,
+                _internal: true
+            });
 
-                const sunk = this.processSunkShip(this.playerBoard, 'player');
-                this.updateAIStateAfterHit(row, col, sunk);
-                if (this.checkWinner(matrix, 'pc')) return;
-                continueTurn = true;
-            } else {
-                matrix[row][col] = 'miss';
-                const boardType = this.playerBoard.boardType;
-                document.getElementById(`${row},${col},${boardType}`)?.classList.add('miss');
-                animateCellMiss(row, col, boardType);
-                showEnemyMissNotification('El enemigo falló — tu turno');
-                appendShotLogEntry(`PC: ${String.fromCharCode(65 + col)}${row + 1} — AGUA`);
-                this.stats.totalShots++;
-                this.updateAIStateAfterMiss(row, col);
-                continueTurn = false;
-                renderTurnIndicator('player');
-                animateTurnChange('player');
-            }
+            if (result.cancelled || result.gameEnded) return;
+
+            pcContinues = !!result.isHit;
         }
+    }
+
+    /** @deprecated alias — usar runPCShotSequence */
+    handlePCShot() {
+        return this.runPCShotSequence();
     }
 
     selectAICell(matrix) {
