@@ -394,6 +394,25 @@ kbd {
     color: #fff;
 }
 
+.settings-audio-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.settings-audio-row .form-range {
+    flex: 1;
+    min-height: 1.5rem;
+}
+
+.settings-audio-value {
+    min-width: 3.25rem;
+    font-family: var(--font-title);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--color-text);
+}
+
 /* Scoreboard */
 .scoreboard-panel {
     display: grid;

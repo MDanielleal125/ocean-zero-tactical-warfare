@@ -55,6 +55,16 @@ import {
 
 import { showElement, hideElement } from './utils/domUtils.js';
 import { initNavalMenuBackground } from './ui/navalMenuBackground.js';
+import {
+    initMusicManager,
+    unlockAudio,
+    playMenuMusic,
+    playSelectionMusic,
+    playBattleMusic,
+    setMusicPaused,
+    persistMusicSettings,
+    syncMusicFromGameState
+} from './ui/musicManager.js';
 
 const SHIP_DISPLAY_NAMES = {
     carrier: 'Portaaviones',
@@ -369,11 +379,14 @@ class Game {
         initBoardZoomControls();
 
         document.addEventListener('welcomeStarted', () => {
+            unlockAudio();
             this.closeIntro();
             this.showMainMenu();
         });
         this.setupMenuControls();
         this.navalMenuBg = initNavalMenuBackground();
+        initMusicManager();
+        playMenuMusic();
         this.startIntroSequence();
     }
 
@@ -513,6 +526,8 @@ class Game {
         this.loadScoreBoard();
         this.loadMatchHistory();
         this.removeActiveOverlays();
+        setMusicPaused(false);
+        playMenuMusic();
         console.log('Main menu opened');
     }
 
@@ -525,6 +540,7 @@ class Game {
     showSettingsScreen() {
         this.hideAllMenus();
         document.getElementById('settings-screen')?.classList.remove('hidden');
+        playMenuMusic();
         const modeField = document.getElementById('settings-mode');
         const nameField = document.getElementById('player-name-input');
         const name2Field = document.getElementById('player2-name-input');
@@ -550,6 +566,7 @@ class Game {
         if (difficultyField) this.difficulty = difficultyField.value;
 
         this.updateModeToggleButton();
+        persistMusicSettings();
         showInfoNotification('Configuración guardada');
         this.showMainMenu();
     }
@@ -584,6 +601,7 @@ class Game {
             gameApp.style.pointerEvents = 'auto';
         }
         this.setupPlacementBoard('player1');
+        playSelectionMusic();
         showInfoNotification(`Preparando partida: ${mode === 'pvp' ? '2 Jugadores local' : `vs PC (${this.difficulty})`}`);
         console.log('Game initialized');
     }
@@ -592,11 +610,13 @@ class Game {
         this.hideAllMenus();
         document.getElementById('scores-screen')?.classList.remove('hidden');
         this.loadScoreBoard();
+        playMenuMusic();
     }
 
     showCreditsScreen() {
         this.hideAllMenus();
         document.getElementById('credits-screen')?.classList.remove('hidden');
+        playMenuMusic();
     }
 
     updateModeToggleButton() {
@@ -756,6 +776,7 @@ class Game {
         }
 
         this.gameStarted = true;
+        this.gamePhase = 'battle';
         this.stats = { totalShots: 0, hits: 0 };
         this.sunkCounts = { player: 0, enemy: 0 };
         this.initializeAIState();
@@ -783,6 +804,7 @@ class Game {
         animateGameStart();
         showShotLogSection();
         startMatchTimer();
+        playBattleMusic();
         showInfoNotification(`¡Batalla iniciada en ${this.difficulty}!. Dispara en el tablero de ataque.`);
     }
 
@@ -813,6 +835,7 @@ class Game {
         animateGameStart();
         showShotLogSection();
         startMatchTimer();
+        playBattleMusic();
         showInfoNotification('¡Batalla PvP iniciada!');
     }
 
@@ -889,6 +912,7 @@ class Game {
     pauseGame() {
         if (this.isPaused || !this.gameStarted) return;
         this.isPaused = true;
+        setMusicPaused(true);
         const btn = document.getElementById('pause-resume-btn');
         if (btn) btn.textContent = 'Reanudar';
         stopMatchTimer();
@@ -923,6 +947,7 @@ class Game {
     resumeGame() {
         if (!this.isPaused) return;
         this.isPaused = false;
+        setMusicPaused(false);
         const btn = document.getElementById('pause-resume-btn');
         if (btn) btn.textContent = 'Pausar';
         const overlay = document.getElementById('pause-overlay');
@@ -934,6 +959,7 @@ class Game {
 
     returnToMainMenu() {
         this.isPaused = false;
+        setMusicPaused(false);
         stopMatchTimer();
         const overlay = document.getElementById('pause-overlay');
         if (overlay) overlay.remove();
@@ -1045,6 +1071,12 @@ class Game {
 
             if (this.isPaused) this.pauseGame();
             else if (this.gameStarted && !this.isPaused) startMatchTimer();
+
+            const inBattle = this.mode === 'pvp'
+                ? this.gameStarted && this.gamePhase === 'battle'
+                : !!this.gameStarted;
+            syncMusicFromGameState({ inMenu: false, inBattle });
+            if (this.isPaused) setMusicPaused(true);
 
             showInfoNotification('Partida cargada');
         } catch (e) {
@@ -1578,6 +1610,11 @@ class Game {
             () => this.shipPlacement.selectedShip,
             () => this.playerBoard.getMatrix()
         );
+
+        const gameVisible = !document.getElementById('game-app')?.classList.contains('hidden');
+        if (gameVisible) {
+            playSelectionMusic();
+        }
 
         showInfoNotification('Nueva partida — coloca tu flota');
     }

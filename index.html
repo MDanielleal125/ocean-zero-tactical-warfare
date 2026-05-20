@@ -74,6 +74,16 @@
                         <option value="hard">Difícil</option>
                     </select>
                 </div>
+                <div class="form-group mb-3 text-start settings-audio-block">
+                    <label for="music-volume" class="form-label">Volumen de música</label>
+                    <div class="settings-audio-row">
+                        <input id="music-volume" class="form-range" type="range" min="0" max="100" value="70" />
+                        <span id="music-volume-value" class="settings-audio-value">70%</span>
+                    </div>
+                </div>
+                <div class="form-group mb-3 text-start">
+                    <button type="button" id="music-mute-btn" class="btn btn-outline-light w-100">Silenciar música</button>
+                </div>
                 <div class="menu-screen__actions menu-screen__actions--vertical">
                     <button type="button" id="save-settings-btn" class="btn btn-primary">Guardar configuración</button>
                     <button type="button" id="settings-back-btn" class="btn btn-outline-secondary">Volver</button>

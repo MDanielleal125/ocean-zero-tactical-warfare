@@ -23,6 +23,7 @@ export function initWelcomeScreen() {
         if (welcome.classList.contains('welcome-screen--hidden')) return;
         welcome.classList.add('welcome-screen--hidden');
         document.dispatchEvent(new CustomEvent('welcomeStarted'));
+        document.dispatchEvent(new CustomEvent('audioUnlock'));
     };
 
     const keyHandler = (event) => {
