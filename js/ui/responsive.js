@@ -11,6 +11,12 @@ const BREAKPOINTS = {
     desktop: 1024
 };
 
+/** Extra pixels added to cell size via +/- zoom buttons (UX-018). */
+let cellZoomBonus = 0;
+const CELL_ZOOM_STEP = 4;
+const CELL_ZOOM_MIN = -8;
+const CELL_ZOOM_MAX = 20;
+
 /**
  * Initializes responsive layout detection and attaches a resize listener.
  * Should be called once on game load.
@@ -33,9 +39,10 @@ export function handleResizeEvent() {
 function applyLayoutForCurrentSize() {
     const width = window.innerWidth;
 
-    if (width < BREAKPOINTS.mobile) {
+    // UI-019: stack boards below 768px
+    if (width < BREAKPOINTS.tablet) {
         applyMobileLayout();
-    } else if (width < BREAKPOINTS.tablet) {
+    } else if (width < BREAKPOINTS.desktop) {
         applyTabletLayout();
     } else {
         applyDesktopLayout();
@@ -86,11 +93,35 @@ export function getCellSize() {
 }
 
 /**
+ * UX-018: Increases or decreases board cell size (reflows layout, no overlap).
+ * @param {number} direction - 1 to zoom in, -1 to zoom out
+ */
+export function adjustCellZoom(direction) {
+    cellZoomBonus = Math.min(
+        CELL_ZOOM_MAX,
+        Math.max(CELL_ZOOM_MIN, cellZoomBonus + direction * CELL_ZOOM_STEP)
+    );
+    scaleBoardCells();
+}
+
+/**
+ * Resets manual zoom offset (e.g. new match).
+ */
+export function resetCellZoom() {
+    cellZoomBonus = 0;
+    scaleBoardCells();
+}
+
+/**
  * Applies dynamic cell sizes to all board cells via a CSS custom property.
  */
 function scaleBoardCells() {
-    const size = getCellSize();
+    const size = getCellSize() + cellZoomBonus;
     document.documentElement.style.setProperty('--cell-size', `${size}px`);
+
+    document.querySelectorAll('#board, #boardAttack').forEach(board => {
+        board.style.transform = '';
+    });
 }
 
 /**
@@ -98,5 +129,5 @@ function scaleBoardCells() {
  * @returns {boolean}
  */
 export function isMobileViewport() {
-    return window.innerWidth < BREAKPOINTS.mobile;
+    return window.innerWidth < BREAKPOINTS.tablet;
 }

@@ -48,14 +48,24 @@ html {
 }
 
 body {
+    /* UI-011 / UI-012 */
+    background-color: #CEDEEA;
+    color: #1a2a3a;
+    font-family: var(--font-body);
+    min-height: 100vh;
+    text-align: center;
+}
+
+body.theme-dark {
     background-color: var(--color-bg);
     background-image:
         radial-gradient(ellipse at 20% 50%, rgba(30, 90, 168, 0.12) 0%, transparent 60%),
         radial-gradient(ellipse at 80% 20%, rgba(30, 90, 168, 0.08) 0%, transparent 50%);
     color: var(--color-text);
-    font-family: var(--font-body);
-    min-height: 100vh;
-    text-align: center;
+}
+
+.hidden {
+    display: none !important;
 }
 
 /* ── Typography ── */
@@ -65,9 +75,14 @@ h1 {
     font-weight: 900;
     letter-spacing: 4px;
     text-transform: uppercase;
+    color: #1565c0;
+    text-shadow: none;
+    padding: 1.2rem 0 0.3rem;
+}
+
+body.theme-dark h1 {
     color: var(--color-accent);
     text-shadow: 0 0 20px rgba(30, 144, 255, 0.5);
-    padding: 1.2rem 0 0.3rem;
 }
 
 h3 {
@@ -98,13 +113,14 @@ h4 {
 
 /* ── Boards Layout ── */
 #boards-container,
-.row:first-of-type {
+.boards-row {
     display: flex;
     justify-content: center;
     align-items: flex-start;
     gap: 3rem;
     flex-wrap: wrap;
-    margin-bottom: 1rem;
+    margin-bottom: 2.5rem;
+    padding-bottom: 0.5rem;
 }
 
 /* Board wrapper section */
@@ -113,6 +129,14 @@ h4 {
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    flex-shrink: 0;
+}
+
+.board-section__viewport {
+    overflow: auto;
+    max-width: 100%;
+    padding: 4px;
 }
 
 .board-section__title {
@@ -189,7 +213,8 @@ h4 {
 .grid {
     width: var(--cell-size);
     height: var(--cell-size);
-    border: 1px solid var(--color-border);
+    /* UI-013 */
+    border: 0.5px solid #000;
     background: rgba(10, 22, 40, 0.6);
     border-radius: 3px;
     display: inline-flex;
@@ -222,21 +247,33 @@ h4 {
 
 /* ── Cell States ── */
 
-/* Ship placed */
+/* Ship placed — UI-005 */
 .board-cell.selected,
 .grid.selected {
+    background-color: blue;
+    border-color: #0d47a1;
+}
+
+body.theme-dark .board-cell.selected,
+body.theme-dark .grid.selected {
     background: linear-gradient(135deg, #1565c0, #1e3d6e);
     border-color: var(--color-ship-glow);
     box-shadow: 0 0 6px rgba(33, 150, 243, 0.4);
 }
 
-/* Hit */
+/* Hit — UI-003 / UI-021 */
 .board-cell.hit,
 .grid.hit {
+    background-color: red;
+    border-color: #b71c1c;
+    cursor: not-allowed;
+}
+
+body.theme-dark .board-cell.hit,
+body.theme-dark .grid.hit {
     background: linear-gradient(135deg, #b71c1c, #e84040);
     border-color: #ff6b6b;
     box-shadow: 0 0 10px rgba(232, 64, 64, 0.6);
-    cursor: not-allowed;
 }
 
 .board-cell.hit::after,
@@ -248,13 +285,33 @@ h4 {
     color: rgba(255, 200, 200, 0.9);
 }
 
-/* Miss */
+/* Miss — UI-004 */
 .board-cell.miss,
 .grid.miss {
+    background-color: gray;
+    border-color: #555;
+    cursor: not-allowed;
+}
+
+body.theme-dark .board-cell.miss,
+body.theme-dark .grid.miss {
     background: radial-gradient(circle, #2a4a62, #1a2e40);
     border-color: var(--color-miss);
     box-shadow: inset 0 0 8px rgba(0,0,0,0.4);
+}
+
+/* UI-024: fully sunk ship */
+.board-cell.sunk,
+.grid.sunk {
+    background-color: #4a0000;
+    border-color: #2a0000;
     cursor: not-allowed;
+}
+
+body.theme-dark .board-cell.sunk,
+body.theme-dark .grid.sunk {
+    background: linear-gradient(135deg, #3e0000, #7f0000);
+    box-shadow: 0 0 12px rgba(120, 0, 0, 0.7);
 }
 
 .board-cell.miss::after,
@@ -324,6 +381,20 @@ h4 {
 .ship-card--depleted {
     opacity: 0.4;
     pointer-events: none;
+    filter: grayscale(1);
+}
+
+/* UI-017 */
+.ship-card--active {
+    border-color: var(--color-gold);
+    box-shadow: 0 0 16px rgba(245, 197, 24, 0.35);
+}
+
+.horizontal.ship-btn--active,
+.vertical.ship-btn--active {
+    background: rgba(30, 144, 255, 0.45);
+    border-color: var(--color-accent);
+    outline: 2px solid var(--color-accent);
 }
 
 .ship-card__info {
@@ -690,7 +761,9 @@ h4 {
     :root { --cell-size: 30px; }
     h1 { font-size: 1.6rem; letter-spacing: 2px; }
 
-    .row:first-of-type {
+    #boards-container,
+    #boards-container.layout--mobile,
+    .boards-row {
         flex-direction: column;
         align-items: center;
         gap: 1.5rem;
@@ -727,3 +800,152 @@ h4 {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--color-bg); }
 ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+/* ── Welcome splash (UX-025) ── */
+.welcome-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 11000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 13, 26, 0.92);
+    padding: 1rem;
+}
+
+.welcome-screen--hidden {
+    display: none;
+}
+
+.welcome-screen__content {
+    max-width: 480px;
+    background: #fff;
+    color: #1a2a3a;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: left;
+}
+
+.welcome-screen__title {
+    font-family: var(--font-title);
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.welcome-screen__rules {
+    margin: 1rem 0 1.5rem 1.2rem;
+    font-size: 0.9rem;
+}
+
+.welcome-screen__btn {
+    width: 100%;
+}
+
+/* ── HUD & helpers ── */
+.game-hud {
+    margin: 1rem 0;
+}
+
+.match-timer,
+.sunk-counter {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+body.theme-dark .match-timer,
+body.theme-dark .sunk-counter {
+    background: var(--color-bg-panel);
+    color: var(--color-text);
+}
+
+.game-instructions {
+    max-width: 720px;
+    margin: 0 auto 1rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    background: rgba(255, 255, 255, 0.65);
+    border-radius: 8px;
+}
+
+body.theme-dark .game-instructions {
+    background: var(--color-bg-panel);
+    color: var(--color-text-dim);
+}
+
+.shot-log-section {
+    max-width: 520px;
+    margin: 1.5rem auto;
+    text-align: left;
+}
+
+.shot-log {
+    max-height: 160px;
+    overflow-y: auto;
+    font-size: 0.8rem;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+}
+
+.shot-log__item {
+    padding: 0.2rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* ── Confirm modal (UX-011) ── */
+.confirm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.confirm-modal__content {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 10px;
+    max-width: 400px;
+    text-align: center;
+}
+
+.confirm-modal__actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.winner-modal__stats {
+    font-size: 0.9rem;
+    color: var(--color-text-dim);
+    margin: 0.5rem 0 1rem;
+    text-align: left;
+}
+
+#boardAttack .grid {
+    cursor: pointer;
+}
+
+.ships-row {
+    justify-content: center;
+    clear: both;
+    margin-top: 0.5rem;
+}
+
+#ships-section-title {
+    margin-top: 1.5rem;
+    clear: both;
+}
+
+.ship-card[draggable='true'] {
+    cursor: grab;
+}
+
+.ship-card[draggable='true']:active {
+    cursor: grabbing;
+}

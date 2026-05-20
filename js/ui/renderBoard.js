@@ -132,30 +132,33 @@ export function renderShipSelectors(ships, onSelectShip) {
             </span>
         `;
 
-        // Placement buttons
-        const btnGroup = document.createElement('div');
-        btnGroup.className = 'ship-card__actions';
+        // UI-009: horizontal / vertical placement controls
+        const positionGroup = document.createElement('div');
+        positionGroup.className = 'position';
 
-        const horizontalBtn = document.createElement('button');
-        horizontalBtn.className = 'ship-btn';
+        const horizontalBtn = document.createElement('div');
+        horizontalBtn.className = 'horizontal';
         horizontalBtn.id = `ship-h-${index}`;
-        horizontalBtn.title = 'Place Horizontal';
-        horizontalBtn.innerHTML = '↔ H';
+        horizontalBtn.title = 'Colocar en horizontal';
+        horizontalBtn.setAttribute('role', 'button');
+        horizontalBtn.tabIndex = 0;
         horizontalBtn.addEventListener('click', () => onSelectShip(index, 'horizontal'));
 
-        const verticalBtn = document.createElement('button');
-        verticalBtn.className = 'ship-btn';
+        const verticalBtn = document.createElement('div');
+        verticalBtn.className = 'vertical';
         verticalBtn.id = `ship-v-${index}`;
-        verticalBtn.title = 'Place Vertical';
-        verticalBtn.innerHTML = '↕ V';
+        verticalBtn.title = 'Colocar en vertical';
+        verticalBtn.setAttribute('role', 'button');
+        verticalBtn.tabIndex = 0;
         verticalBtn.addEventListener('click', () => onSelectShip(index, 'vertical'));
 
-        btnGroup.appendChild(horizontalBtn);
-        btnGroup.appendChild(verticalBtn);
+        positionGroup.appendChild(horizontalBtn);
+        positionGroup.appendChild(verticalBtn);
 
         card.appendChild(preview);
         card.appendChild(info);
-        card.appendChild(btnGroup);
+        card.appendChild(positionGroup);
+        card.dataset.shipIndex = String(index);
 
         if (ship.quantity === 0) card.classList.add('ship-card--depleted');
 
@@ -201,10 +204,17 @@ export function updateShipQuantityDisplay(shipIndex, quantity) {
  * @param {string} orientation - 'horizontal' or 'vertical'
  */
 export function highlightSelectedShipButton(shipIndex, orientation) {
-    document.querySelectorAll('.ship-btn').forEach(btn => btn.classList.remove('ship-btn--active'));
+    document.querySelectorAll('.horizontal, .vertical').forEach(btn => {
+        btn.classList.remove('ship-btn--active');
+    });
+    document.querySelectorAll('.ship-card').forEach(card => card.classList.remove('ship-card--active'));
+
     const btnId = orientation === 'horizontal' ? `ship-h-${shipIndex}` : `ship-v-${shipIndex}`;
     const btn = document.getElementById(btnId);
     if (btn) btn.classList.add('ship-btn--active');
+
+    const card = document.getElementById(`ship-card-${shipIndex}`);
+    if (card) card.classList.add('ship-card--active');
 }
 
 /**
@@ -215,7 +225,7 @@ export function renderTurnIndicator(currentTurn) {
     const indicator = document.getElementById('turn-indicator');
     if (!indicator) return;
 
-    indicator.textContent = currentTurn === 'player' ? '⚓ Your Turn — Fire!' : '🤖 Enemy Targeting...';
+    indicator.textContent = currentTurn === 'player' ? 'Turno: Jugador' : 'Turno: PC';
     indicator.className = `turn-indicator turn-indicator--${currentTurn}`;
 }
 
@@ -328,4 +338,38 @@ function computeProjectedCells(startRow, startCol, size, orientation) {
  */
 function clearPreviewClasses() {
     clearClassesFromAll('.board-cell, .grid', PREVIEW_CLASSES);
+}
+
+/**
+ * UX-017: Enables drag-and-drop from ship cards onto the player board.
+ * @param {string} boardType - Board type key ('player')
+ * @param {Function} onDropShip - Callback(shipIndex, row, col, orientation)
+ */
+export function enableShipDragDrop(boardType, onDropShip) {
+    document.querySelectorAll('.ship-card').forEach(card => {
+        card.setAttribute('draggable', 'true');
+
+        card.addEventListener('dragstart', (event) => {
+            const index = card.dataset.shipIndex;
+            const activeOrientation = card.querySelector('.ship-btn--active, .horizontal.ship-btn--active, .vertical.ship-btn--active');
+            let orientation = 'horizontal';
+            if (activeOrientation?.classList.contains('vertical')) orientation = 'vertical';
+            event.dataTransfer.setData('shipIndex', index);
+            event.dataTransfer.setData('orientation', orientation);
+        });
+    });
+
+    document.querySelectorAll(`[id$=",${boardType}"].grid, [id$=",${boardType}"].board-cell`).forEach(cell => {
+        cell.addEventListener('dragover', (event) => {
+            event.preventDefault();
+        });
+
+        cell.addEventListener('drop', (event) => {
+            event.preventDefault();
+            const shipIndex = parseInt(event.dataTransfer.getData('shipIndex'), 10);
+            const orientation = event.dataTransfer.getData('orientation') || 'horizontal';
+            const [rowStr, colStr] = cell.id.split(',');
+            onDropShip(shipIndex, parseInt(rowStr, 10), parseInt(colStr, 10), orientation);
+        });
+    });
 }

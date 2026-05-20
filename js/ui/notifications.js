@@ -116,14 +116,59 @@ export function showEnemyMissNotification(message) {
 }
 
 /**
- * Shows a full-screen winner/loser modal with a restart button.
- * @param {string} winner - 'player' or 'pc'
+ * UX-011: Confirmation dialog before starting without all ships placed.
+ * @param {string} message - Warning message
+ * @returns {Promise<boolean>} Resolves true if user confirms
  */
-export function showWinnerModal(winner) {
+export function showConfirmDialog(message) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirm-modal';
+        overlay.innerHTML = `
+            <div class="confirm-modal__content">
+                <p class="confirm-modal__message">${message}</p>
+                <div class="confirm-modal__actions">
+                    <button type="button" class="btn btn-secondary" id="confirm-cancel">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirm-ok">Continuar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        requestAnimationFrame(() => overlay.classList.add('confirm-modal--visible'));
+
+        overlay.querySelector('#confirm-ok').addEventListener('click', () => {
+            overlay.remove();
+            resolve(true);
+        });
+        overlay.querySelector('#confirm-cancel').addEventListener('click', () => {
+            overlay.remove();
+            resolve(false);
+        });
+    });
+}
+
+/**
+ * UX-006: Toast when a full ship is sunk.
+ * @param {string} shipDisplayName - Localized ship name
+ */
+export function showSunkShipNotification(shipDisplayName) {
+    showNotification(`¡Hundiste el ${shipDisplayName}!`, 'hit');
+}
+
+/**
+ * Shows a full-screen end-game modal with stats (UX-009, UX-010).
+ * @param {string} winner - 'player' or 'pc'
+ * @param {Object} stats - { totalShots, hits, accuracy, elapsedSeconds }
+ * @param {Function} onRestart - Called when user clicks Nueva partida
+ */
+export function showWinnerModal(winner, stats = {}, onRestart = null) {
     const existing = document.getElementById('winner-modal');
     if (existing) existing.remove();
 
     const isPlayerWinner = winner === 'player';
+    const minutes = String(Math.floor((stats.elapsedSeconds || 0) / 60)).padStart(2, '0');
+    const seconds = String((stats.elapsedSeconds || 0) % 60).padStart(2, '0');
 
     const modal = document.createElement('div');
     modal.id = 'winner-modal';
@@ -133,13 +178,19 @@ export function showWinnerModal(winner) {
         <div class="winner-modal__content">
             <div class="winner-modal__icon">${isPlayerWinner ? '🏆' : '💀'}</div>
             <h2 class="winner-modal__title ${isPlayerWinner ? 'winner-modal__title--win' : 'winner-modal__title--loss'}">
-                ${isPlayerWinner ? 'VICTORY!' : 'DEFEAT'}
+                ${isPlayerWinner ? '¡VICTORIA!' : 'DERROTA'}
             </h2>
             <p class="winner-modal__message">
-                ${isPlayerWinner ? 'You destroyed the enemy fleet!' : 'Your fleet has been sunk!'}
+                ${isPlayerWinner ? 'Destruiste la flota enemiga.' : 'Tu flota ha sido hundida.'}
             </p>
-            <button class="winner-modal__btn" id="restart-btn">
-                ⚓ Play Again
+            <ul class="winner-modal__stats list-unstyled">
+                <li>Disparos totales: <strong>${stats.totalShots ?? 0}</strong></li>
+                <li>Impactos: <strong>${stats.hits ?? 0}</strong></li>
+                <li>Precisión: <strong>${stats.accuracy ?? 0}%</strong></li>
+                <li>Tiempo: <strong>${minutes}:${seconds}</strong></li>
+            </ul>
+            <button type="button" class="winner-modal__btn btn btn-primary" id="restart-btn">
+                Nueva partida
             </button>
         </div>
     `;
@@ -151,6 +202,11 @@ export function showWinnerModal(winner) {
     });
 
     document.getElementById('restart-btn').addEventListener('click', () => {
-        location.reload();
+        modal.remove();
+        if (typeof onRestart === 'function') {
+            onRestart();
+        } else {
+            location.reload();
+        }
     });
 }
