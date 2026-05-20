@@ -1,0 +1,375 @@
+/**
+ * renderBoard.js
+ * Handles all DOM rendering for game boards and ship selectors.
+ * Responsible for: board grid creation, cell state updates, ship selector UI, turn indicator,
+ * and ship placement hover preview.
+ * Owner: J. Mena (feature/ui)
+ */
+
+import { clearClassesFromAll } from '../utils/domUtils.js';
+
+const BOARD_SIZE = 10;
+const COL_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+
+/**
+ * Renders a 10x10 interactive grid board inside the given container.
+ * Adds column and row labels for readability.
+ * @param {HTMLElement} boardElement - The container element for the board
+ * @param {string} boardType - 'player' or 'pc'
+ * @param {Function} clickHandler - Click handler attached to each cell
+ * @returns {Array<Array<string>>} Initialized empty 2D matrix
+ */
+export function renderBoard(boardElement, boardType, clickHandler) {
+    boardElement.innerHTML = '';
+    boardElement.classList.add('game-board', `game-board--${boardType}`);
+
+    renderColumnLabels(boardElement);
+
+    const matrix = [];
+
+    for (let i = 0; i < BOARD_SIZE; i++) {
+        const row = [];
+        const rowElement = document.createElement('div');
+        rowElement.className = 'board-row';
+
+        // Row number label (1–10)
+        const rowLabel = document.createElement('span');
+        rowLabel.className = 'board-label board-label--row';
+        rowLabel.textContent = i + 1;
+        rowElement.appendChild(rowLabel);
+
+        for (let j = 0; j < BOARD_SIZE; j++) {
+            const cell = document.createElement('div');
+            cell.className = 'board-cell grid';
+            cell.id = `${i},${j},${boardType}`;
+            cell.dataset.row = i;
+            cell.dataset.col = j;
+            cell.dataset.board = boardType;
+
+            if (clickHandler) {
+                cell.addEventListener('click', clickHandler);
+            }
+
+            rowElement.appendChild(cell);
+            row.push('');
+        }
+
+        boardElement.appendChild(rowElement);
+        matrix.push(row);
+    }
+
+    return matrix;
+}
+
+/**
+ * Renders A–J column header labels above the board grid.
+ * @param {HTMLElement} boardElement - The board container
+ */
+function renderColumnLabels(boardElement) {
+    const labelsRow = document.createElement('div');
+    labelsRow.className = 'board-labels-row';
+
+    // Empty corner cell to align with row labels
+    const corner = document.createElement('span');
+    corner.className = 'board-label board-label--corner';
+    labelsRow.appendChild(corner);
+
+    COL_LABELS.forEach(letter => {
+        const label = document.createElement('span');
+        label.className = 'board-label board-label--col';
+        label.textContent = letter;
+        labelsRow.appendChild(label);
+    });
+
+    boardElement.appendChild(labelsRow);
+}
+
+/**
+ * Updates a single cell's visual CSS classes based on its game state.
+ * @param {number} row - Row index
+ * @param {number} col - Column index
+ * @param {string} boardType - 'player' or 'pc'
+ * @param {string} state - 'ship' | 'hit' | 'miss' | 'empty'
+ */
+export function updateCellState(row, col, boardType, state) {
+    const cell = document.getElementById(`${row},${col},${boardType}`);
+    if (!cell) return;
+
+    cell.classList.remove('selected', 'hit', 'miss');
+
+    if (state === 'ship') cell.classList.add('selected');
+    else if (state === 'hit') cell.classList.add('hit');
+    else if (state === 'miss') cell.classList.add('miss');
+}
+
+/**
+ * Renders the ship selector panel with horizontal/vertical placement buttons.
+ * @param {Array<Object>} ships - Array of ship objects with type, size, quantity
+ * @param {Function} onSelectShip - Callback(shipIndex, orientation) when a button is clicked
+ */
+export function renderShipSelectors(ships, onSelectShip) {
+    const container = document.getElementById('ships');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    ships.forEach((ship, index) => {
+        const card = document.createElement('div');
+        card.className = 'ship-card';
+        card.id = `ship-card-${index}`;
+
+        // Visual block preview of ship size
+        const preview = buildShipPreview(ship.size);
+
+        // Ship info text
+        const info = document.createElement('div');
+        info.className = 'ship-card__info';
+        info.innerHTML = `
+            <span class="ship-card__name">${getShipDisplayName(ship.type)}</span>
+            <span class="ship-card__detail">
+                Size: ${ship.size} &nbsp;|&nbsp;
+                Left: <strong id="ship-qty-${index}">${ship.quantity}</strong>
+            </span>
+        `;
+
+        // UI-009: horizontal / vertical placement controls
+        const positionGroup = document.createElement('div');
+        positionGroup.className = 'position';
+
+        const horizontalBtn = document.createElement('div');
+        horizontalBtn.className = 'horizontal';
+        horizontalBtn.id = `ship-h-${index}`;
+        horizontalBtn.title = 'Colocar en horizontal';
+        horizontalBtn.setAttribute('role', 'button');
+        horizontalBtn.tabIndex = 0;
+        horizontalBtn.addEventListener('click', () => onSelectShip(index, 'horizontal'));
+
+        const verticalBtn = document.createElement('div');
+        verticalBtn.className = 'vertical';
+        verticalBtn.id = `ship-v-${index}`;
+        verticalBtn.title = 'Colocar en vertical';
+        verticalBtn.setAttribute('role', 'button');
+        verticalBtn.tabIndex = 0;
+        verticalBtn.addEventListener('click', () => onSelectShip(index, 'vertical'));
+
+        positionGroup.appendChild(horizontalBtn);
+        positionGroup.appendChild(verticalBtn);
+
+        card.appendChild(preview);
+        card.appendChild(info);
+        card.appendChild(positionGroup);
+        card.dataset.shipIndex = String(index);
+
+        if (ship.quantity === 0) card.classList.add('ship-card--depleted');
+
+        container.appendChild(card);
+    });
+}
+
+/**
+ * Builds a small visual preview of a ship using block divs.
+ * @param {number} size - Number of blocks to render
+ * @returns {HTMLElement} The preview element
+ */
+function buildShipPreview(size) {
+    const preview = document.createElement('div');
+    preview.className = 'ship-preview';
+
+    for (let i = 0; i < size; i++) {
+        const block = document.createElement('div');
+        block.className = 'ship-preview__block';
+        preview.appendChild(block);
+    }
+
+    return preview;
+}
+
+/**
+ * Updates the remaining quantity display for a ship card.
+ * Marks the card as depleted if quantity reaches zero.
+ * @param {number} shipIndex - Index of the ship
+ * @param {number} quantity - New remaining quantity
+ */
+export function updateShipQuantityDisplay(shipIndex, quantity) {
+    const qtyEl = document.getElementById(`ship-qty-${shipIndex}`);
+    if (qtyEl) qtyEl.textContent = quantity;
+
+    const card = document.getElementById(`ship-card-${shipIndex}`);
+    if (card) card.classList.toggle('ship-card--depleted', quantity === 0);
+}
+
+/**
+ * Marks a ship placement button as the active selection.
+ * @param {number} shipIndex - Index of the selected ship
+ * @param {string} orientation - 'horizontal' or 'vertical'
+ */
+export function highlightSelectedShipButton(shipIndex, orientation) {
+    document.querySelectorAll('.horizontal, .vertical').forEach(btn => {
+        btn.classList.remove('ship-btn--active');
+    });
+    document.querySelectorAll('.ship-card').forEach(card => card.classList.remove('ship-card--active'));
+
+    const btnId = orientation === 'horizontal' ? `ship-h-${shipIndex}` : `ship-v-${shipIndex}`;
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.add('ship-btn--active');
+
+    const card = document.getElementById(`ship-card-${shipIndex}`);
+    if (card) card.classList.add('ship-card--active');
+}
+
+/**
+ * Updates the turn indicator element to reflect the current turn.
+ * @param {string} currentTurn - 'player' or 'pc'
+ */
+export function renderTurnIndicator(currentTurn) {
+    const indicator = document.getElementById('turn-indicator');
+    if (!indicator) return;
+
+    indicator.textContent = currentTurn === 'player' ? 'Turno: Jugador' : 'Turno: PC';
+    indicator.className = `turn-indicator turn-indicator--${currentTurn}`;
+}
+
+/**
+ * Returns the human-readable name of a ship type.
+ * @param {string} type - Ship type key (e.g. 'carrier')
+ * @returns {string} Display name
+ */
+function getShipDisplayName(type) {
+    const names = {
+        carrier: 'Carrier',
+        battleship: 'Battleship',
+        submarine: 'Submarine',
+        destroyer: 'Destroyer'
+    };
+    return names[type] || type;
+}
+
+// ---------------------------------------------------------------------------
+// Placement hover preview
+// ---------------------------------------------------------------------------
+
+/** CSS classes used for hover preview — cleared on each mouseleave. */
+const PREVIEW_CLASSES = ['preview-valid', 'preview-invalid'];
+
+/**
+ * Enables a real-time hover preview on the player board during ship placement.
+ * Highlights cells green if placement is valid, red if blocked or out of bounds.
+ *
+ * @param {string} boardType - Board type key ('player')
+ * @param {Function} getSelectedShip - Returns the currently selected ship object or null
+ * @param {Function} getMatrix - Returns the current board 2D matrix
+ */
+export function enablePlacementPreview(boardType, getSelectedShip, getMatrix) {
+    const cells = document.querySelectorAll(
+        `[id$=",${boardType}"].board-cell, [id$=",${boardType}"].grid`
+    );
+
+    cells.forEach(cell => {
+        cell.addEventListener('mouseover', () => handleCellMouseOver(cell, boardType, getSelectedShip, getMatrix));
+        cell.addEventListener('mouseleave', () => clearPreviewClasses());
+    });
+}
+
+/**
+ * Removes all preview event listeners by clearing preview CSS classes.
+ * Call this when the placement phase ends.
+ */
+export function disablePlacementPreview() {
+    clearPreviewClasses();
+}
+
+/**
+ * Handles mouseover on a placement cell: computes projected ship cells,
+ * validates each, and applies preview-valid or preview-invalid CSS classes.
+ *
+ * @param {HTMLElement} cell - The hovered cell element
+ * @param {string} boardType - Board type key
+ * @param {Function} getSelectedShip - Returns selected ship or null
+ * @param {Function} getMatrix - Returns board matrix
+ */
+function handleCellMouseOver(cell, boardType, getSelectedShip, getMatrix) {
+    clearPreviewClasses();
+
+    const ship = getSelectedShip();
+    if (!ship) return;
+
+    const [rowStr, colStr] = cell.id.split(',');
+    const row = parseInt(rowStr);
+    const col = parseInt(colStr);
+    const matrix = getMatrix();
+    const projectedCells = computeProjectedCells(row, col, ship.size, ship.orientation);
+
+    projectedCells.forEach(pos => {
+        const isOutOfBounds = pos.row < 0 || pos.row > 9 || pos.col < 0 || pos.col > 9;
+        const isOccupied    = !isOutOfBounds && matrix[pos.row][pos.col] !== '';
+        const isInvalid     = isOutOfBounds || isOccupied;
+
+        if (!isOutOfBounds) {
+            const target = document.getElementById(`${pos.row},${pos.col},${boardType}`);
+            if (target && !target.classList.contains('selected')) {
+                target.classList.add(isInvalid ? 'preview-invalid' : 'preview-valid');
+            }
+        }
+    });
+}
+
+/**
+ * Computes the list of {row, col} positions a ship would occupy.
+ * @param {number} startRow - Starting row
+ * @param {number} startCol - Starting column
+ * @param {number} size - Ship size
+ * @param {string} orientation - 'horizontal' or 'vertical'
+ * @returns {Array<{row: number, col: number}>}
+ */
+function computeProjectedCells(startRow, startCol, size, orientation) {
+    const cells = [];
+    for (let i = 0; i < size; i++) {
+        if (orientation === 'horizontal') {
+            cells.push({ row: startRow, col: startCol + i });
+        } else {
+            cells.push({ row: startRow + i, col: startCol });
+        }
+    }
+    return cells;
+}
+
+/**
+ * Clears all hover preview CSS classes from every cell in the DOM.
+ */
+function clearPreviewClasses() {
+    clearClassesFromAll('.board-cell, .grid', PREVIEW_CLASSES);
+}
+
+/**
+ * UX-017: Enables drag-and-drop from ship cards onto the player board.
+ * @param {string} boardType - Board type key ('player')
+ * @param {Function} onDropShip - Callback(shipIndex, row, col, orientation)
+ */
+export function enableShipDragDrop(boardType, onDropShip) {
+    document.querySelectorAll('.ship-card').forEach(card => {
+        card.setAttribute('draggable', 'true');
+
+        card.addEventListener('dragstart', (event) => {
+            const index = card.dataset.shipIndex;
+            const activeOrientation = card.querySelector('.ship-btn--active, .horizontal.ship-btn--active, .vertical.ship-btn--active');
+            let orientation = 'horizontal';
+            if (activeOrientation?.classList.contains('vertical')) orientation = 'vertical';
+            event.dataTransfer.setData('shipIndex', index);
+            event.dataTransfer.setData('orientation', orientation);
+        });
+    });
+
+    document.querySelectorAll(`[id$=",${boardType}"].grid, [id$=",${boardType}"].board-cell`).forEach(cell => {
+        cell.addEventListener('dragover', (event) => {
+            event.preventDefault();
+        });
+
+        cell.addEventListener('drop', (event) => {
+            event.preventDefault();
+            const shipIndex = parseInt(event.dataTransfer.getData('shipIndex'), 10);
+            const orientation = event.dataTransfer.getData('orientation') || 'horizontal';
+            const [rowStr, colStr] = cell.id.split(',');
+            onDropShip(shipIndex, parseInt(rowStr, 10), parseInt(colStr, 10), orientation);
+        });
+    });
+}

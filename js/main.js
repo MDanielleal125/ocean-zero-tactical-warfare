@@ -158,6 +158,8 @@ class ShipPlacement {
     }
 }
 
+import { EasyAI } from './ai/aiEasy.js';
+
 class Game {
     constructor() {
         this.boardElement = document.querySelector("#board");
@@ -167,6 +169,7 @@ class Game {
         this.shipPlacement = null;
         this.pcShipPlacement = null;
         this.gameStarted = false;
+        this.ai = new EasyAI();
     }
 
     initialize() {
@@ -266,23 +269,45 @@ class Game {
     }
 
     handlePCShot() {
-        const matrix = this.playerBoard.getMatrix();
-        const row = Math.floor(Math.random() * 10);
-        const col = Math.floor(Math.random() * 10);
+        const matrix = this.convertToModernMatrix(this.playerBoard.getMatrix());
+        
+        this.ai.startTurn(
+            matrix,
+            [],
+            (shotResult) => {
+                document.getElementById(`${shotResult.row},${shotResult.col},player`).className += " hit";
+                this.checkWinner(this.playerBoard.getMatrix(), "pc");
+            },
+            (shotResult) => {
+                document.getElementById(`${shotResult.row},${shotResult.col},player`).className += " miss";
+            },
+            (ship) => {
+                alert(`PC sunk your ${ship.type}!`);
+            },
+            () => {
+                // Turn ended
+            }
+        );
+    }
 
-        if (matrix[row][col] === "ship") {
-            alert("Ops! te han disparado");
-            matrix[row][col] = "hit";
-            document.getElementById(`${row},${col},player`).className += " hit";
-            this.checkWinner(matrix, "pc");
-            this.handlePCShot();
-        } else if (matrix[row][col] === "hit" || matrix[row][col] === "miss") {
-            this.handlePCShot();
-        } else {
-            alert("El disparo del pc cayó al agua");
-            matrix[row][col] = "miss";
-            document.getElementById(`${row},${col},player`).className += " miss";
+    convertToModernMatrix(oldMatrix) {
+        const modernMatrix = [];
+        for (let row = 0; row < oldMatrix.length; row++) {
+            const rowArray = [];
+            for (let col = 0; col < oldMatrix[row].length; col++) {
+                let state = 'empty';
+                if (oldMatrix[row][col] === 'ship') {
+                    state = 'ship';
+                } else if (oldMatrix[row][col] === 'hit') {
+                    state = 'hit';
+                } else if (oldMatrix[row][col] === 'miss') {
+                    state = 'miss';
+                }
+                rowArray.push({ row, col, state });
+            }
+            modernMatrix.push(rowArray);
         }
+        return modernMatrix;
     }
 
     checkWinner(matrix, player) {
