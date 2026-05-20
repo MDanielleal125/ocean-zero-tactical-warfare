@@ -166,7 +166,8 @@ export function showWinnerModal(winner, stats = {}, onRestart = null) {
     const existing = document.getElementById('winner-modal');
     if (existing) existing.remove();
 
-    const isPlayerWinner = winner === 'player';
+    const isPlayerWinner = winner === 'player' || winner === 'player1' || winner === 'player2';
+    const winnerName = winner === 'player1' ? 'Jugador 1' : winner === 'player2' ? 'Jugador 2' : winner === 'player' ? 'Tú' : 'PC';
     const minutes = String(Math.floor((stats.elapsedSeconds || 0) / 60)).padStart(2, '0');
     const seconds = String((stats.elapsedSeconds || 0) % 60).padStart(2, '0');
 
@@ -181,7 +182,7 @@ export function showWinnerModal(winner, stats = {}, onRestart = null) {
                 ${isPlayerWinner ? '¡VICTORIA!' : 'DERROTA'}
             </h2>
             <p class="winner-modal__message">
-                ${isPlayerWinner ? 'Destruiste la flota enemiga.' : 'Tu flota ha sido hundida.'}
+                ${isPlayerWinner ? `${winnerName} ganó la partida.` : `${winnerName} hundió tu flota.`}
             </p>
             <ul class="winner-modal__stats list-unstyled">
                 <li>Disparos totales: <strong>${stats.totalShots ?? 0}</strong></li>

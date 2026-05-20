@@ -42,9 +42,30 @@
                 luego dispara en <em>Ataque</em> cuando sea tu turno.</p>
             </aside>
 
+            <aside id="left-panel" class="left-panel">
+                <div class="left-panel__controls">
+                    <button type="button" id="pause-resume-btn" class="btn btn-sm btn-outline-secondary">Pausar</button>
+                    <button type="button" id="reset-game-btn" class="btn btn-sm btn-outline-danger">Reiniciar partida</button>
+                    <button type="button" id="save-game-btn" class="btn btn-sm btn-outline-primary">Guardar</button>
+                    <button type="button" id="load-game-btn" class="btn btn-sm btn-outline-primary">Cargar</button>
+                    <button type="button" id="mode-toggle-btn" class="btn btn-sm btn-outline-warning">Modo 2 jugadores</button>
+                </div>
+
+                <section id="shot-log-section" class="shot-log-section hidden">
+                    <h4>Historial de disparos</h4>
+                    <ol id="shot-log" class="shot-log list-unstyled"></ol>
+                </section>
+
+                <section id="match-history-section" class="match-history-section">
+                    <h4>Historial de partidas</h4>
+                    <ol id="match-history" class="match-history list-unstyled"></ol>
+                </section>
+            </aside>
+
             <div id="game-hud" class="game-hud row justify-content-center g-2">
                 <div class="col-auto">
                     <div id="turn-indicator" class="turn-indicator" style="display:none;"></div>
+                    <div id="player-status" class="player-status"></div>
                 </div>
                 <div class="col-auto">
                     <div id="match-timer" class="match-timer">Tiempo: 00:00</div>
@@ -68,11 +89,11 @@
 
             <div id="boards-container" class="row layout--desktop boards-row">
                 <div class="col board-section">
-                    <p class="board-section__title">Tu flota</p>
+                    <p id="own-board-title" class="board-section__title">Tu flota</p>
                     <div id="board"></div>
                 </div>
                 <div class="col board-section board-section--attack hidden">
-                    <p class="board-section__title">Ataque</p>
+                    <p id="attack-board-title" class="board-section__title">Ataque</p>
                     <div id="boardAttack"></div>
                 </div>
             </div>
@@ -91,10 +112,7 @@
                 </div>
             </div>
 
-            <section id="shot-log-section" class="shot-log-section hidden">
-                <h4>Historial de disparos</h4>
-                <ol id="shot-log" class="shot-log list-unstyled"></ol>
-            </section>
+            
         </div>
 
         <script type="module" src="js/main.js"></script>

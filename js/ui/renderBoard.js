@@ -196,6 +196,15 @@ export function updateShipQuantityDisplay(shipIndex, quantity) {
 
     const card = document.getElementById(`ship-card-${shipIndex}`);
     if (card) card.classList.toggle('ship-card--depleted', quantity === 0);
+
+    // Notify application about quantity changes so UI/state can react (start button, indicators)
+    try {
+        document.dispatchEvent(new CustomEvent('shipQuantityChanged', {
+            detail: { index: shipIndex, quantity }
+        }));
+    } catch (e) {
+        // ignore in environments that block CustomEvent
+    }
 }
 
 /**
@@ -225,7 +234,16 @@ export function renderTurnIndicator(currentTurn) {
     const indicator = document.getElementById('turn-indicator');
     if (!indicator) return;
 
-    indicator.textContent = currentTurn === 'player' ? 'Turno: Jugador' : 'Turno: PC';
+    if (currentTurn === 'player1') {
+        indicator.textContent = 'Turno: Jugador 1';
+    } else if (currentTurn === 'player2') {
+        indicator.textContent = 'Turno: Jugador 2';
+    } else if (currentTurn === 'player') {
+        indicator.textContent = 'Turno: Jugador';
+    } else {
+        indicator.textContent = 'Turno: PC';
+    }
+
     indicator.className = `turn-indicator turn-indicator--${currentTurn}`;
 }
 

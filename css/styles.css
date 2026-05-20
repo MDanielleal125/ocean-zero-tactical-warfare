@@ -335,6 +335,28 @@ body.theme-dark .grid.sunk {
     transition: all 0.3s ease;
 }
 
+.player-status {
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--color-text-dim);
+}
+
+.turn-indicator--player1,
+.turn-indicator--player2,
+.turn-indicator--player {
+    color: var(--color-gold);
+    border-color: rgba(245, 197, 24, 0.4);
+    background: rgba(245, 197, 24, 0.08);
+    box-shadow: 0 0 12px rgba(245, 197, 24, 0.2);
+}
+
+.turn-indicator--pc {
+    color: var(--color-red);
+    border-color: rgba(232, 64, 64, 0.4);
+    background: rgba(232, 64, 64, 0.08);
+    box-shadow: 0 0 12px rgba(232, 64, 64, 0.2);
+}
+
 .turn-indicator--player {
     color: var(--color-gold);
     border-color: rgba(245, 197, 24, 0.4);
@@ -949,3 +971,62 @@ body.theme-dark .game-instructions {
 .ship-card[draggable='true']:active {
     cursor: grabbing;
 }
+
+/* ── Left panel (shot log sticky) ── */
+.left-panel {
+    position: fixed;
+    left: 1rem;
+    top: 6rem;
+    width: 220px;
+    max-height: calc(100vh - 8rem);
+    overflow: auto;
+    background: rgba(255,255,255,0.9);
+    padding: 0.75rem;
+    border-radius: 8px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+    z-index: 900;
+}
+
+body.theme-dark .left-panel {
+    background: rgba(8,20,36,0.9);
+}
+
+.left-panel__controls { display:flex; flex-direction:column; gap:0.4rem; margin-bottom:0.6rem; }
+
+.shot-log-section { text-align:left; }
+.shot-log { max-height: 38vh; overflow: auto; padding-left: 0.6rem; }
+
+.match-history-section { margin-top: 0.8rem; text-align:left; }
+
+/* ── Pause overlay ── */
+.pause-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    color: #fff;
+    font-size: 1.6rem;
+}
+
+.pause-overlay__content {
+    background: rgba(14, 32, 62, 0.95);
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 0 18px rgba(0, 0, 0, 0.5);
+    text-align: center;
+}
+
+.pause-overlay__content p {
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+}
+
+#pass-device-continue {
+    padding: 0.8rem 1.6rem;
+}
+
+.ship-card--missing { border-color: var(--color-red) !important; box-shadow: 0 0 10px rgba(232,64,64,0.25); }
