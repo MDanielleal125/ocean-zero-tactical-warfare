@@ -18,7 +18,10 @@ function bindWelcomeStart() {
     if (!welcomeBtn) return;
 
     welcomeBtn.addEventListener('click', () => {
-        window.dispatchEvent(new CustomEvent('gameStartRequested'));
+        const welcome = document.getElementById('welcome-screen');
+        if (welcome) {
+            welcome.classList.add('welcome-screen--hidden');
+        }
     });
 }
 

@@ -4,7 +4,6 @@
  * Owner: J. Mena (feature/ui)
  */
 
-import { showElement } from '../utils/domUtils.js';
 import { adjustCellZoom } from './responsive.js';
 
 let timerInterval = null;

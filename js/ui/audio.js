@@ -15,23 +15,21 @@ export function setAudioEnabled(enabled) {
 }
 
 /**
- * Plays a short tone using Web Audio API (no external files required).
- * @param {number} frequency - Hz
- * @param {number} duration - seconds
- * @param {string} type - oscillator type
+ * Creates a shared oscillator-based tone.
  */
-function playTone(frequency, duration, type = 'sine') {
+function playTone(frequency, duration, type = 'sine', volume = 0.12) {
     if (!audioEnabled) return;
 
     try {
-        const context = new (window.AudioContext || window.webkitAudioContext)();
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const context = new AudioContext();
         const oscillator = context.createOscillator();
         const gain = context.createGain();
 
         oscillator.type = type;
         oscillator.frequency.value = frequency;
-        gain.gain.setValueAtTime(0.15, context.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + duration);
+        gain.gain.setValueAtTime(volume, context.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
 
         oscillator.connect(gain);
         gain.connect(context.destination);
@@ -42,18 +40,27 @@ function playTone(frequency, duration, type = 'sine') {
     }
 }
 
-/**
- * UX-004: Cannon sound when a shot is fired.
- */
 export function playShotSound() {
-    playTone(120, 0.12, 'square');
-    setTimeout(() => playTone(80, 0.08, 'square'), 40);
+    playTone(140, 0.12, 'square', 0.14);
+    setTimeout(() => playTone(90, 0.08, 'square', 0.1), 45);
 }
 
-/**
- * UX-005: Explosion sound when a shot hits a ship.
- */
 export function playExplosionSound() {
-    playTone(90, 0.2, 'sawtooth');
-    setTimeout(() => playTone(55, 0.25, 'triangle'), 60);
+    playTone(220, 0.14, 'sawtooth', 0.14);
+    setTimeout(() => playTone(120, 0.18, 'triangle', 0.1), 80);
+}
+
+export function playMissSound() {
+    playTone(220, 0.1, 'triangle', 0.08);
+    setTimeout(() => playTone(180, 0.08, 'triangle', 0.06), 35);
+}
+
+export function playSunkSound() {
+    playTone(260, 0.16, 'square', 0.16);
+    setTimeout(() => playTone(140, 0.18, 'sine', 0.08), 90);
+}
+
+export function playWinSound() {
+    playTone(420, 0.22, 'triangle', 0.14);
+    setTimeout(() => playTone(320, 0.24, 'triangle', 0.12), 120);
 }

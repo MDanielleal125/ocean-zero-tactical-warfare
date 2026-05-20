@@ -52,7 +52,7 @@
                     </div>
                 </article>
 
-                <article class="board-frame board-frame--enemy">
+                <article class="board-frame board-frame--enemy board-section--attack">
                     <div class="board-frame__header">
                         <div>
                             <span class="board-chip board-chip--enemy">Enemigo</span>
@@ -83,6 +83,10 @@
                             <strong id="turn-indicator">Jugador</strong>
                         </div>
                         <div class="status-card">
+                            <span class="status-label">Tiempo</span>
+                            <strong id="match-timer">00:00</strong>
+                        </div>
+                        <div class="status-card">
                             <span class="status-label">Barcos hundidos</span>
                             <div class="status-values">
                                 <span>Jugador <strong id="player-sunk-count">0</strong></span>
@@ -91,7 +95,7 @@
                         </div>
                     </div>
                     <div class="action-controls">
-                        <button id="startGameButton" class="btn btn-primary">Iniciar batalla</button>
+                        <button id="startGameButton" class="btn btn-primary" disabled>Iniciar batalla</button>
                         <button id="restartGameButton" class="btn btn-outline-light">Nueva partida</button>
                     </div>
                 </section>
@@ -102,38 +106,38 @@
                         <span class="hint">Selecciona orientación</span>
                     </div>
                     <div id="ships" class="ship-grid">
-                    <article class="ship-card">
+                    <article id="ship-card-0" class="ship-card">
                         <div class="ship-card__info">
                             <span class="ship-card__name">Carrier</span>
-                            <span class="ship-card__detail">Size: 5</span>
+                            <span class="ship-card__detail">Size: 5 &middot; Left: <strong id="ship-qty-0">1</strong></span>
                         </div>
                         <div class="position"></div>
                     </article>
-                    <article class="ship-card">
+                    <article id="ship-card-1" class="ship-card">
                         <div class="ship-card__info">
                             <span class="ship-card__name">Battleship</span>
-                            <span class="ship-card__detail">Size: 4</span>
+                            <span class="ship-card__detail">Size: 4 &middot; Left: <strong id="ship-qty-1">1</strong></span>
                         </div>
                         <div class="position"></div>
                     </article>
-                    <article class="ship-card">
+                    <article id="ship-card-2" class="ship-card">
                         <div class="ship-card__info">
                             <span class="ship-card__name">Submarine</span>
-                            <span class="ship-card__detail">Size: 3</span>
+                            <span class="ship-card__detail">Size: 3 &middot; Left: <strong id="ship-qty-2">1</strong></span>
                         </div>
                         <div class="position"></div>
                     </article>
-                    <article class="ship-card">
+                    <article id="ship-card-3" class="ship-card">
                         <div class="ship-card__info">
                             <span class="ship-card__name">Destroyer</span>
-                            <span class="ship-card__detail">Size: 2</span>
+                            <span class="ship-card__detail">Size: 2 &middot; Left: <strong id="ship-qty-3">2</strong></span>
                         </div>
                         <div class="position"></div>
                     </article>
                 </div>
             </section>
 
-                <section class="panel panel--log">
+                <section id="shot-log-section" class="panel panel--log">
                     <div class="panel-title-row">
                         <h3>Registro</h3>
                         <button id="board-zoom-in" class="btn btn-sm btn-secondary">+</button>
