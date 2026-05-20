@@ -3,6 +3,9 @@ import { gameState, getSelectedShip, getSelectedOrientation, getAvailableShips }
 import { initializeBoards, setCellState, getCellState } from './board/boardManager.js';
 import { selectShip, setOrientation, placeShip } from './board/shipPlacement.js';
 import { showNotification } from './ui/notifications.js';
+import { executeShot, validateShot } from './combat/shootingSystem.js';
+import { findShipAtPosition, applyDamageToShip, isShipSunk } from './combat/damageSystem.js';
+import { checkWinner, getVictoryMessage } from './combat/winnerSystem.js';
 
 let gameStarted = false;
 
@@ -183,20 +186,32 @@ function placePCShip(row, col, size, orientation) {
 }
 
 function handlePlayerShot(row, col) {
-    const cellState = getCellState(gameState.enemyMatrix, row, col);
+    const shotResult = executeShot(gameState.enemyMatrix, row, col);
     
-    if (cellState === CELL_STATES.SHIP) {
-        setCellState(gameState.enemyMatrix, row, col, CELL_STATES.HIT);
-        document.getElementById(`${row},${col},enemy`).classList.add('hit');
+    if (!shotResult.success) {
+        showNotification(shotResult.message);
+        return;
+    }
+    
+    const grid = document.getElementById(`${row},${col},enemy`);
+    
+    if (shotResult.result === 'hit') {
+        grid.classList.add('hit');
         showNotification('Hit! You can shoot again.');
-        checkWinner();
-    } else if (cellState === CELL_STATES.EMPTY) {
-        setCellState(gameState.enemyMatrix, row, col, CELL_STATES.MISS);
-        document.getElementById(`${row},${col},enemy`).classList.add('miss');
+        
+        const hitShip = findShipAtPosition(gameState.enemyShips, row, col);
+        if (hitShip) {
+            applyDamageToShip(hitShip, row, col);
+            if (isShipSunk(hitShip)) {
+                showNotification(`Enemy ${hitShip.type} sunk!`);
+            }
+        }
+        
+        checkGameWinner();
+    } else if (shotResult.result === 'miss') {
+        grid.classList.add('miss');
         showNotification('Miss! PC\'s turn.');
         setTimeout(handlePCShot, 1000);
-    } else {
-        showNotification('Cell already shot. Choose another.');
     }
 }
 
@@ -212,27 +227,35 @@ function handlePCShot() {
         while (!validShot) {
             row = Math.floor(Math.random() * BOARD_SIZE);
             col = Math.floor(Math.random() * BOARD_SIZE);
-            const cellState = getCellState(gameState.playerMatrix, row, col);
+            const validation = validateShot(gameState.playerMatrix, row, col);
             
-            if (cellState === CELL_STATES.SHIP || cellState === CELL_STATES.EMPTY) {
+            if (validation.valid) {
                 validShot = true;
             }
         }
         
-        const cellState = getCellState(gameState.playerMatrix, row, col);
+        const shotResult = executeShot(gameState.playerMatrix, row, col);
+        const grid = document.getElementById(`${row},${col},player`);
         
-        if (cellState === CELL_STATES.SHIP) {
-            setCellState(gameState.playerMatrix, row, col, CELL_STATES.HIT);
-            document.getElementById(`${row},${col},player`).classList.add('hit');
+        if (shotResult.result === 'hit') {
+            grid.classList.add('hit');
             showNotification('PC hit your ship!');
-            checkWinner();
+            
+            const hitShip = findShipAtPosition(gameState.playerShips, row, col);
+            if (hitShip) {
+                applyDamageToShip(hitShip, row, col);
+                if (isShipSunk(hitShip)) {
+                    showNotification(`Your ${hitShip.type} was sunk!`);
+                }
+            }
+            
+            checkGameWinner();
             
             if (gameStarted) {
                 setTimeout(executePCShot, 1000);
             }
-        } else {
-            setCellState(gameState.playerMatrix, row, col, CELL_STATES.MISS);
-            document.getElementById(`${row},${col},player`).classList.add('miss');
+        } else if (shotResult.result === 'miss') {
+            grid.classList.add('miss');
             showNotification('PC missed. Your turn.');
             isPCTurn = false;
         }
@@ -241,27 +264,14 @@ function handlePCShot() {
     executePCShot();
 }
 
-function checkWinner() {
-    let playerShipsRemaining = 0;
-    let enemyShipsRemaining = 0;
+function checkGameWinner() {
+    const result = checkWinner(gameState.playerShips, gameState.enemyShips);
     
-    for (let row = 0; row < BOARD_SIZE; row++) {
-        for (let col = 0; col < BOARD_SIZE; col++) {
-            if (getCellState(gameState.playerMatrix, row, col) === CELL_STATES.SHIP) {
-                playerShipsRemaining++;
-            }
-            if (getCellState(gameState.enemyMatrix, row, col) === CELL_STATES.SHIP) {
-                enemyShipsRemaining++;
-            }
-        }
-    }
-    
-    if (enemyShipsRemaining === 0) {
-        showNotification('YOU WIN!!!');
+    if (result.gameOver) {
         gameStarted = false;
-    } else if (playerShipsRemaining === 0) {
-        showNotification('PC WINS!');
-        gameStarted = false;
+        gameState.gameStarted = false;
+        const message = getVictoryMessage(result.winner);
+        showNotification(message);
     }
 }
 
