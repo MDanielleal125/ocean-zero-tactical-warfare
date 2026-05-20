@@ -358,6 +358,7 @@ class Game {
         this.introTimeoutId = null;
         this.isIntroPlaying = false;
         this.cleanupWelcomeScreen = null;
+        this.aiState = null;
     }
 
     bootstrap() {
@@ -755,6 +756,7 @@ class Game {
         this.gameStarted = true;
         this.stats = { totalShots: 0, hits: 0 };
         this.sunkCounts = { player: 0, enemy: 0 };
+        this.initializeAIState();
         updateSunkCounters(0, 0);
 
         showAttackBoardSection();
@@ -1123,25 +1125,42 @@ class Game {
     }
 
     placePCShipsRandomly() {
-        const ships = this.pcShipPlacement.getShips();
         const orientations = ['horizontal', 'vertical'];
+        const maxPlacementAttempts = 5;
+        let placementSuccessful = false;
 
-        ships.forEach((ship, shipIndex) => {
-            let attempts = 0;
-            while (ship.hasRemaining() && attempts < 5000) {
-                attempts++;
-                const orientation = orientations[Math.floor(Math.random() * orientations.length)];
-                const row = Math.floor(Math.random() * 10);
-                const col = Math.floor(Math.random() * 10);
+        for (let attempt = 0; attempt < maxPlacementAttempts && !placementSuccessful; attempt++) {
+            this.pcBoard.reset();
+            this.pcBoard.create();
+            this.pcShipPlacement = new ShipPlacement(this.pcBoard);
 
-                if (this.pcBoard.isValidPosition(row, col, orientation, ship.size)) {
-                    const placed = this.pcBoard.placeShip(row, col, orientation, ship.size, ship.type);
-                    if (placed !== null) {
-                        ship.decrement();
+            placementSuccessful = true;
+            const ships = this.pcShipPlacement.getShips();
+
+            ships.forEach((ship, shipIndex) => {
+                let attempts = 0;
+                while (ship.hasRemaining() && attempts < 5000) {
+                    attempts++;
+                    const orientation = orientations[Math.floor(Math.random() * orientations.length)];
+                    const row = Math.floor(Math.random() * 10);
+                    const col = Math.floor(Math.random() * 10);
+
+                    if (this.pcBoard.isValidPosition(row, col, orientation, ship.size)) {
+                        const placed = this.pcBoard.placeShip(row, col, orientation, ship.size, ship.type);
+                        if (placed !== null) {
+                            ship.decrement();
+                        }
                     }
                 }
-            }
-        });
+                if (ship.hasRemaining()) {
+                    placementSuccessful = false;
+                }
+            });
+        }
+
+        if (!placementSuccessful) {
+            showErrorNotification('Error al colocar las naves del PC. Reinicia la partida.');
+        }
     }
 
     handlePlayerPlacement(event) {
@@ -1219,41 +1238,235 @@ class Game {
 
     handlePCShot() {
         if (this.isPaused) return;
+        if (!this.playerBoard) return;
 
-        // Simple AI random shots on player board
         const matrix = this.playerBoard.getMatrix();
-        const row = Math.floor(Math.random() * 10);
-        const col = Math.floor(Math.random() * 10);
+        let continueTurn = true;
 
-        if (matrix[row][col] === 'hit' || matrix[row][col] === 'miss') {
-            this.handlePCShot();
-            return;
-        }
+        while (continueTurn && this.gameStarted && !this.isPaused) {
+            const shot = this.selectAICell(matrix);
+            if (!shot) break;
+            const { row, col, strategy } = shot;
+            const cellValue = matrix[row][col];
+            const isHit = cellValue === 'ship';
 
-        playShotSound();
+            playShotSound();
+            console.log('Difficulty:', this.difficulty);
+            console.log('Target selected:', row, col);
+            console.log('Cell value:', cellValue);
+            console.log('Hit:', isHit);
 
-        if (matrix[row][col] === 'ship') {
-            matrix[row][col] = 'hit';
-            document.getElementById(`${row},${col},player`).classList.add('hit');
-            animateCellHit(row, col, 'player');
-            playExplosionSound();
-            showEnemyHitNotification('¡Te han impactado!');
-            appendShotLogEntry(`PC: ${String.fromCharCode(65 + col)}${row + 1} — IMPACTO`);
-            this.processSunkShip(this.playerBoard, 'player');
-            this.checkWinner(matrix, 'pc');
-            this.handlePCShot();
-        } else {
-            matrix[row][col] = 'miss';
-            document.getElementById(`${row},${col},player`).classList.add('miss');
-            animateCellMiss(row, col, 'player');
-            showEnemyMissNotification('El enemigo falló — tu turno');
-            appendShotLogEntry(`PC: ${String.fromCharCode(65 + col)}${row + 1} — AGUA`);
-            renderTurnIndicator('player');
-            animateTurnChange('player');
+            if (isHit) {
+                matrix[row][col] = 'hit';
+                const boardType = this.playerBoard.boardType;
+                document.getElementById(`${row},${col},${boardType}`)?.classList.add('hit');
+                animateCellHit(row, col, boardType);
+                playExplosionSound();
+                showEnemyHitNotification('¡Te han impactado!');
+                appendShotLogEntry(`PC: ${String.fromCharCode(65 + col)}${row + 1} — IMPACTO`);
+                this.stats.totalShots++;
+                this.stats.hits++;
+
+                const sunk = this.processSunkShip(this.playerBoard, 'player');
+                this.updateAIStateAfterHit(row, col, sunk);
+                if (this.checkWinner(matrix, 'pc')) return;
+                continueTurn = true;
+            } else {
+                matrix[row][col] = 'miss';
+                const boardType = this.playerBoard.boardType;
+                document.getElementById(`${row},${col},${boardType}`)?.classList.add('miss');
+                animateCellMiss(row, col, boardType);
+                showEnemyMissNotification('El enemigo falló — tu turno');
+                appendShotLogEntry(`PC: ${String.fromCharCode(65 + col)}${row + 1} — AGUA`);
+                this.stats.totalShots++;
+                this.updateAIStateAfterMiss(row, col);
+                continueTurn = false;
+                renderTurnIndicator('player');
+                animateTurnChange('player');
+            }
         }
     }
 
+    selectAICell(matrix) {
+        if (this.difficulty === 'easy') {
+            const cell = this.selectRandomTargetCell(matrix);
+            return cell ? { ...cell, strategy: 'random' } : null;
+        }
+
+        if (this.aiState.phase === 'target') {
+            while (this.aiState.targetQueue.length) {
+                const next = this.aiState.targetQueue.shift();
+                if (this.isValidTargetCell(next.row, next.col, matrix)) {
+                    return { ...next, strategy: 'target' };
+                }
+            }
+            this.initializeAIState();
+        }
+
+        if (this.difficulty === 'hard') {
+            const cell = this.selectPatternTargetCell(matrix);
+            return cell ? { ...cell, strategy: 'pattern' } : null;
+        }
+
+        const cell = this.selectRandomTargetCell(matrix);
+        return cell ? { ...cell, strategy: 'random' } : null;
+    }
+
+    selectRandomTargetCell(matrix) {
+        const candidateCells = [];
+
+        for (let row = 0; row < 10; row++) {
+            for (let col = 0; col < 10; col++) {
+                if (this.isValidTargetCell(row, col, matrix)) {
+                    candidateCells.push({ row, col });
+                }
+            }
+        }
+
+        if (!candidateCells.length) return null;
+        return candidateCells[Math.floor(Math.random() * candidateCells.length)];
+    }
+
+    selectPatternTargetCell(matrix) {
+        const patternCells = [];
+        const fallback = [];
+        const step = this.getLargestRemainingShipSize(this.playerBoard) >= 4 ? 2 : 1;
+
+        for (let row = 0; row < 10; row++) {
+            for (let col = 0; col < 10; col++) {
+                if (!this.isValidTargetCell(row, col, matrix)) continue;
+                if (((row + col) % step) === 0) {
+                    patternCells.push({ row, col });
+                }
+                fallback.push({ row, col });
+            }
+        }
+
+        if (patternCells.length) {
+            return patternCells[Math.floor(Math.random() * patternCells.length)];
+        }
+        if (fallback.length) {
+            return fallback[Math.floor(Math.random() * fallback.length)];
+        }
+        return null;
+    }
+
+    updateAIStateAfterHit(row, col, sunk) {
+        if (this.difficulty === 'easy') return;
+
+        if (sunk) {
+            this.initializeAIState();
+            return;
+        }
+
+        this.aiState.targetHits.push({ row, col });
+        this.aiState.targetDirection = this.getTargetDirection();
+        this.aiState.phase = 'target';
+        this.aiState.targetQueue = this.buildTargetQueue();
+
+        if (!this.aiState.targetQueue.length) {
+            this.initializeAIState();
+        }
+    }
+
+    updateAIStateAfterMiss(row, col) {
+        if (this.difficulty === 'easy') return;
+        if (this.aiState.phase !== 'target') return;
+        if (!this.aiState.targetQueue.length) {
+            this.initializeAIState();
+        }
+    }
+
+    buildTargetQueue() {
+        if (!this.aiState.targetDirection) {
+            const queue = [];
+            this.aiState.targetHits.forEach(hit => {
+                this.getAdjacentCells(hit.row, hit.col).forEach(cell => queue.push(cell));
+            });
+            return this.uniqueCells(queue);
+        }
+        return this.getOrientedTargetQueue();
+    }
+
+    getAdjacentCells(row, col) {
+        return [
+            { row: row - 1, col },
+            { row: row + 1, col },
+            { row, col: col - 1 },
+            { row, col: col + 1 }
+        ].filter(cell => cell.row >= 0 && cell.row < 10 && cell.col >= 0 && cell.col < 10);
+    }
+
+    getOrientedTargetQueue() {
+        const hits = [...this.aiState.targetHits];
+        const direction = this.aiState.targetDirection;
+        const queue = [];
+
+        if (direction === 'horizontal') {
+            const row = hits[0].row;
+            const sortedCols = hits.map(hit => hit.col).sort((a, b) => a - b);
+            queue.push({ row, col: sortedCols[0] - 1 });
+            queue.push({ row, col: sortedCols[sortedCols.length - 1] + 1 });
+        } else if (direction === 'vertical') {
+            const col = hits[0].col;
+            const sortedRows = hits.map(hit => hit.row).sort((a, b) => a - b);
+            queue.push({ row: sortedRows[0] - 1, col });
+            queue.push({ row: sortedRows[sortedRows.length - 1] + 1, col });
+        }
+
+        const adjacent = [];
+        this.aiState.targetHits.forEach(hit => {
+            this.getAdjacentCells(hit.row, hit.col).forEach(cell => adjacent.push(cell));
+        });
+
+        return this.uniqueCells([...queue, ...adjacent]);
+    }
+
+    getTargetDirection() {
+        if (this.aiState.targetHits.length < 2) return null;
+
+        const [first, second] = this.aiState.targetHits;
+        if (first.row === second.row) return 'horizontal';
+        if (first.col === second.col) return 'vertical';
+        return null;
+    }
+
+    isValidTargetCell(row, col, matrix) {
+        if (row < 0 || row >= 10 || col < 0 || col >= 10) return false;
+        const value = matrix[row][col];
+        return value !== 'hit' && value !== 'miss';
+    }
+
+    uniqueCells(cells) {
+        const seen = new Set();
+        return cells.filter(cell => {
+            const key = `${cell.row},${cell.col}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    }
+
+    getLargestRemainingShipSize(board) {
+        if (!board || !board.placedShips.length) return 3;
+        const sizes = board.placedShips
+            .filter(ship => !ship.sunk)
+            .map(ship => ship.cells.length);
+        return sizes.length ? Math.max(...sizes) : 1;
+    }
+
+    initializeAIState() {
+        this.aiState = {
+            phase: 'search',
+            targetHits: [],
+            targetQueue: [],
+            targetDirection: null
+        };
+    }
+
     processSunkShip(board, side) {
+        let sunkAny = false;
+
         board.placedShips.forEach(shipRecord => {
             if (shipRecord.sunk) return;
 
@@ -1264,6 +1477,7 @@ class Game {
 
             if (!allHit) return;
 
+            sunkAny = true;
             shipRecord.sunk = true;
             shipRecord.cells.forEach(pos => {
                 const cell = document.getElementById(`${pos.row},${pos.col},${board.boardType}`);
@@ -1281,11 +1495,13 @@ class Game {
 
             updateSunkCounters(this.sunkCounts.player, this.sunkCounts.enemy);
         });
+
+        return sunkAny;
     }
 
     checkWinner(matrix, player) {
         for (let i = 0; i < 10; i++) {
-            if (matrix[i].some(cell => cell === 'ship')) return;
+            if (matrix[i].some(cell => cell === 'ship')) return false;
         }
 
         stopMatchTimer();
@@ -1312,6 +1528,7 @@ class Game {
             () => this.resetMatch(),
             () => this.returnToMainMenu()
         );
+        return true;
     }
 
     resetMatch() {
