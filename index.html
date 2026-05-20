@@ -15,24 +15,104 @@
     </head>
     <body>
         <div id="welcome-screen" class="welcome-screen">
-            <div class="welcome-screen__content">
-                <h2 class="welcome-screen__title">BattleShip</h2>
+            <div class="welcome-screen__content welcome-screen__content--intro">
+                <h2 class="welcome-screen__title">Ocean Zero Warfare</h2>
                 <p class="welcome-screen__text">
-                    Coloca tus 4 tipos de nave en el tablero, elige orientación con los botones
-                    o la tecla <kbd>R</kbd>, y destruye la flota enemiga antes de que te hundan.
+                    Un enfrentamiento táctico en alta mar. Comanda tu flota, define la estrategia y vence al adversario.
                 </p>
-                <ul class="welcome-screen__rules">
-                    <li>Clic en una celda para colocar la nave seleccionada.</li>
-                    <li>Rojo = impacto, gris = agua, azul = tu nave.</li>
-                    <li>Tras colocar todas las naves, pulsa <strong>Iniciar batalla</strong>.</li>
-                </ul>
-                <button type="button" id="welcome-start-btn" class="btn btn-primary welcome-screen__btn">
-                    Comenzar
-                </button>
+                <div class="welcome-screen__footer">
+                    <span class="welcome-screen__hint">Pulsa <kbd>Espacio</kbd> o haz clic para continuar</span>
+                    <button type="button" id="welcome-start-btn" class="btn btn-primary welcome-screen__btn">
+                        Saltar intro
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div id="game-app" class="container game-app">
+        <div id="main-menu" class="menu-screen hidden">
+            <div class="menu-screen__content">
+                <div class="menu-screen__hero">
+                    <h1>OCEAN ZERO</h1>
+                    <p>Fuego, ordena y domina el tablero. Elige tu modo y comienza la batalla.</p>
+                </div>
+                <div class="menu-screen__actions">
+                    <button type="button" id="menu-start-pve" class="btn btn-primary">Juego vs PC</button>
+                    <button type="button" id="menu-start-pvp" class="btn btn-outline-primary">2 Jugadores local</button>
+                </div>
+                <div class="menu-screen__links">
+                    <button type="button" id="menu-scores-btn" class="btn btn-sm btn-outline-light">Puntuaciones</button>
+                    <button type="button" id="menu-settings-btn" class="btn btn-sm btn-outline-light">Configuración</button>
+                    <button type="button" id="menu-credits-btn" class="btn btn-sm btn-outline-light">Créditos</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="settings-screen" class="menu-screen hidden">
+            <div class="menu-screen__content menu-screen__content--small">
+                <h2>Configuración</h2>
+                <div class="form-group mb-3 text-start">
+                    <label for="settings-mode" class="form-label">Modo de juego</label>
+                    <select id="settings-mode" class="form-select">
+                        <option value="pve">Juego vs PC</option>
+                        <option value="pvp">2 Jugadores local</option>
+                    </select>
+                </div>
+                <div class="form-group mb-3 text-start">
+                    <label for="player-name-input" class="form-label">Nombre Jugador 1</label>
+                    <input id="player-name-input" class="form-control" type="text" value="Capitán" />
+                </div>
+                <div class="form-group mb-3 text-start" id="player2-name-group">
+                    <label for="player2-name-input" class="form-label">Nombre Jugador 2</label>
+                    <input id="player2-name-input" class="form-control" type="text" value="Aliado" />
+                </div>
+                <div class="form-group mb-3 text-start">
+                    <label for="difficulty-select" class="form-label">Dificultad</label>
+                    <select id="difficulty-select" class="form-select">
+                        <option value="easy">Fácil</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="hard">Difícil</option>
+                    </select>
+                </div>
+                <div class="menu-screen__actions menu-screen__actions--vertical">
+                    <button type="button" id="save-settings-btn" class="btn btn-primary">Guardar configuración</button>
+                    <button type="button" id="settings-back-btn" class="btn btn-outline-secondary">Volver</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="scores-screen" class="menu-screen hidden">
+            <div class="menu-screen__content menu-screen__content--wide">
+                <h2>Puntuaciones y Hall of Fame</h2>
+                <div class="scoreboard-panel">
+                    <div>
+                        <h3>Top 5 campeones</h3>
+                        <ol id="scoreboard-list" class="scoreboard-list list-unstyled"></ol>
+                    </div>
+                    <div>
+                        <h3>Partidas recientes</h3>
+                        <ol id="score-history-list" class="score-history-list list-unstyled"></ol>
+                    </div>
+                </div>
+                <div class="menu-screen__actions">
+                    <button type="button" id="scores-back-btn" class="btn btn-outline-secondary">Volver</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="credits-screen" class="menu-screen hidden">
+            <div class="menu-screen__content menu-screen__content--small">
+                <h2>Créditos</h2>
+                <p>Ocean Zero Warfare — Un proyecto de estrategia naval con modo jugador contra PC y PvP local.</p>
+                <p>Desarrollador: Daniel</p>
+                <p>UX/UI: J. Mena</p>
+                <p>Gracias por jugar y mejore tus tácticas en cada partida.</p>
+                <div class="menu-screen__actions">
+                    <button type="button" id="credits-back-btn" class="btn btn-outline-secondary">Volver</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-app" class="container game-app hidden">
             <h1>BattleShip</h1>
             <h3>Selecciona la posición de tus naves</h3>
 

@@ -158,11 +158,12 @@ export function showSunkShipNotification(shipDisplayName) {
 
 /**
  * Shows a full-screen end-game modal with stats (UX-009, UX-010).
- * @param {string} winner - 'player' or 'pc'
+ * @param {string} winner - 'player1', 'player2', 'player', or 'pc'
  * @param {Object} stats - { totalShots, hits, accuracy, elapsedSeconds }
  * @param {Function} onRestart - Called when user clicks Nueva partida
+ * @param {Function} onMenu - Called when user clicks Volver al menú
  */
-export function showWinnerModal(winner, stats = {}, onRestart = null) {
+export function showWinnerModal(winner, stats = {}, onRestart = null, onMenu = null) {
     const existing = document.getElementById('winner-modal');
     if (existing) existing.remove();
 
@@ -174,6 +175,10 @@ export function showWinnerModal(winner, stats = {}, onRestart = null) {
     const modal = document.createElement('div');
     modal.id = 'winner-modal';
     modal.className = 'winner-modal';
+
+    const extraButton = typeof onMenu === 'function'
+        ? `<button type="button" class="winner-modal__btn btn btn-outline-light" id="menu-btn">Volver al menú</button>`
+        : '';
 
     modal.innerHTML = `
         <div class="winner-modal__content">
@@ -190,9 +195,12 @@ export function showWinnerModal(winner, stats = {}, onRestart = null) {
                 <li>Precisión: <strong>${stats.accuracy ?? 0}%</strong></li>
                 <li>Tiempo: <strong>${minutes}:${seconds}</strong></li>
             </ul>
-            <button type="button" class="winner-modal__btn btn btn-primary" id="restart-btn">
-                Nueva partida
-            </button>
+            <div class="winner-modal__actions">
+                <button type="button" class="winner-modal__btn btn btn-primary" id="restart-btn">
+                    Nueva partida
+                </button>
+                ${extraButton}
+            </div>
         </div>
     `;
 
@@ -210,4 +218,11 @@ export function showWinnerModal(winner, stats = {}, onRestart = null) {
             location.reload();
         }
     });
+
+    if (typeof onMenu === 'function') {
+        document.getElementById('menu-btn')?.addEventListener('click', () => {
+            modal.remove();
+            onMenu();
+        });
+    }
 }

@@ -17,11 +17,28 @@ export function initWelcomeScreen() {
     const welcome = document.getElementById('welcome-screen');
     const btn = document.getElementById('welcome-start-btn');
 
-    if (!btn || !welcome) return;
+    if (!btn || !welcome) return () => {};
 
-    btn.addEventListener('click', () => {
+    const hideWelcome = () => {
+        if (welcome.classList.contains('welcome-screen--hidden')) return;
         welcome.classList.add('welcome-screen--hidden');
-    });
+        document.dispatchEvent(new CustomEvent('welcomeStarted'));
+    };
+
+    const keyHandler = (event) => {
+        if (event.code === 'Space') {
+            event.preventDefault();
+            hideWelcome();
+        }
+    };
+
+    btn.addEventListener('click', hideWelcome);
+    document.addEventListener('keydown', keyHandler);
+
+    return () => {
+        btn.removeEventListener('click', hideWelcome);
+        document.removeEventListener('keydown', keyHandler);
+    };
 }
 
 /**

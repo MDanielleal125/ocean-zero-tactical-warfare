@@ -347,18 +347,31 @@ class Game {
         this.currentTurn = 'player'; // 'player' | 'pc' | 'player1' | 'player2'
         this.gamePhase = 'setup'; // 'setup' | 'battle'
         this.activePlacementPlayer = 'player1';
+        this.playerName = 'Capitán';
+        this.player2Name = 'Aliado';
+        this.difficulty = 'normal';
         this.player1Board = null;
         this.player1ShipPlacement = null;
         this.player2Board = null;
         this.player2ShipPlacement = null;
         this.matchHistoryKey = 'battleship_match_history_v1';
+        this.introTimeoutId = null;
+        this.isIntroPlaying = false;
+        this.cleanupWelcomeScreen = null;
     }
 
     bootstrap() {
         this.initialize();
-        initWelcomeScreen();
+        this.cleanupWelcomeScreen = initWelcomeScreen();
         initThemeToggle();
         initBoardZoomControls();
+
+        document.addEventListener('welcomeStarted', () => {
+            this.closeIntro();
+            this.showMainMenu();
+        });
+        this.setupMenuControls();
+        this.startIntroSequence();
     }
 
     initialize() {
@@ -430,12 +443,228 @@ class Game {
         }
     }
 
+    setupMenuControls() {
+        document.getElementById('menu-start-pve')?.addEventListener('click', () => this.startNewGame('pve'));
+        document.getElementById('menu-start-pvp')?.addEventListener('click', () => this.startNewGame('pvp'));
+        document.getElementById('menu-scores-btn')?.addEventListener('click', () => this.showScoresScreen());
+        document.getElementById('menu-settings-btn')?.addEventListener('click', () => this.showSettingsScreen());
+        document.getElementById('menu-credits-btn')?.addEventListener('click', () => this.showCreditsScreen());
+        document.getElementById('settings-back-btn')?.addEventListener('click', () => this.showMainMenu());
+        document.getElementById('scores-back-btn')?.addEventListener('click', () => this.showMainMenu());
+        document.getElementById('credits-back-btn')?.addEventListener('click', () => this.showMainMenu());
+        document.getElementById('save-settings-btn')?.addEventListener('click', () => this.saveSettings());
+        document.getElementById('settings-mode')?.addEventListener('change', (event) => {
+            const mode = event.target.value;
+            const player2Group = document.getElementById('player2-name-group');
+            if (player2Group) {
+                player2Group.style.display = mode === 'pvp' ? 'block' : 'none';
+            }
+        });
+    }
+
+    startIntroSequence() {
+        console.log('Intro started');
+        this.isIntroPlaying = true;
+        if (this.introTimeoutId) {
+            clearTimeout(this.introTimeoutId);
+            this.introTimeoutId = null;
+        }
+
+        this.introTimeoutId = setTimeout(() => {
+            this.closeIntro();
+            this.showMainMenu();
+        }, 4200);
+    }
+
+    closeIntro() {
+        if (!this.isIntroPlaying && !this.cleanupWelcomeScreen) return;
+        console.log('Intro finished');
+        this.isIntroPlaying = false;
+        if (this.introTimeoutId) {
+            clearTimeout(this.introTimeoutId);
+            this.introTimeoutId = null;
+        }
+
+        const welcome = document.getElementById('welcome-screen');
+        if (welcome) {
+            welcome.classList.add('welcome-screen--hidden');
+            welcome.style.display = 'none';
+            welcome.style.pointerEvents = 'none';
+            welcome.setAttribute('aria-hidden', 'true');
+        }
+
+        if (typeof this.cleanupWelcomeScreen === 'function') {
+            this.cleanupWelcomeScreen();
+            this.cleanupWelcomeScreen = null;
+        }
+
+        this.removeActiveOverlays();
+    }
+
+    showMainMenu() {
+        this.closeIntro();
+        this.hideAllMenus();
+        document.getElementById('main-menu')?.classList.remove('hidden');
+        document.getElementById('game-app')?.classList.add('hidden');
+        this.updateModeToggleButton();
+        this.loadScoreBoard();
+        this.loadMatchHistory();
+        this.removeActiveOverlays();
+        console.log('Main menu opened');
+    }
+
+    hideAllMenus() {
+        ['main-menu', 'settings-screen', 'scores-screen', 'credits-screen'].forEach(id => {
+            document.getElementById(id)?.classList.add('hidden');
+        });
+    }
+
+    showSettingsScreen() {
+        this.hideAllMenus();
+        document.getElementById('settings-screen')?.classList.remove('hidden');
+        const modeField = document.getElementById('settings-mode');
+        const nameField = document.getElementById('player-name-input');
+        const name2Field = document.getElementById('player2-name-input');
+        const difficultyField = document.getElementById('difficulty-select');
+        const player2Group = document.getElementById('player2-name-group');
+
+        if (modeField) modeField.value = this.mode;
+        if (nameField) nameField.value = this.playerName;
+        if (name2Field) name2Field.value = this.player2Name;
+        if (difficultyField) difficultyField.value = this.difficulty;
+        if (player2Group) player2Group.style.display = this.mode === 'pvp' ? 'block' : 'none';
+    }
+
+    saveSettings() {
+        const modeField = document.getElementById('settings-mode');
+        const nameField = document.getElementById('player-name-input');
+        const name2Field = document.getElementById('player2-name-input');
+        const difficultyField = document.getElementById('difficulty-select');
+
+        if (modeField) this.mode = modeField.value;
+        if (nameField && nameField.value.trim()) this.playerName = nameField.value.trim();
+        if (name2Field && name2Field.value.trim()) this.player2Name = name2Field.value.trim();
+        if (difficultyField) this.difficulty = difficultyField.value;
+
+        this.updateModeToggleButton();
+        showInfoNotification('Configuración guardada');
+        this.showMainMenu();
+    }
+
+    startNewGame(mode) {
+        console.log('Starting game:', mode);
+        this.closeIntro();
+        this.removeActiveOverlays();
+        this.mode = mode;
+        this.gamePhase = 'setup';
+        this.gameStarted = false;
+        this.isPaused = false;
+        this.activePlacementPlayer = 'player1';
+        this.player1Board = null;
+        this.player1ShipPlacement = null;
+        this.player2Board = null;
+        this.player2ShipPlacement = null;
+        this.resetMatch();
+        this.updateModeToggleButton();
+        this.hideAllMenus();
+        document.getElementById('main-menu')?.classList.add('hidden');
+        const welcome = document.getElementById('welcome-screen');
+        if (welcome) {
+            welcome.classList.add('welcome-screen--hidden');
+            welcome.style.display = 'none';
+            welcome.style.pointerEvents = 'none';
+            welcome.setAttribute('aria-hidden', 'true');
+        }
+        const gameApp = document.getElementById('game-app');
+        if (gameApp) {
+            gameApp.classList.remove('hidden');
+            gameApp.style.pointerEvents = 'auto';
+        }
+        this.setupPlacementBoard('player1');
+        showInfoNotification(`Preparando partida: ${mode === 'pvp' ? '2 Jugadores local' : `vs PC (${this.difficulty})`}`);
+        console.log('Game initialized');
+    }
+
+    showScoresScreen() {
+        this.hideAllMenus();
+        document.getElementById('scores-screen')?.classList.remove('hidden');
+        this.loadScoreBoard();
+    }
+
+    showCreditsScreen() {
+        this.hideAllMenus();
+        document.getElementById('credits-screen')?.classList.remove('hidden');
+    }
+
+    updateModeToggleButton() {
+        const btn = document.getElementById('mode-toggle-btn');
+        if (!btn) return;
+        btn.textContent = this.mode === 'pvp' ? 'Modo vs PC' : 'Modo 2 jugadores';
+    }
+
+    removeActiveOverlays() {
+        ['pause-overlay', 'pass-device-overlay'].forEach(id => {
+            const overlay = document.getElementById(id);
+            if (overlay) overlay.remove();
+        });
+    }
+
+    loadScoreBoard() {
+        const raw = localStorage.getItem(this.matchHistoryKey);
+        const history = raw ? JSON.parse(raw) : [];
+        const scoreboard = {};
+
+        history.forEach(entry => {
+            const key = entry.winnerName || entry.winner || 'Desconocido';
+            scoreboard[key] = scoreboard[key] || { wins: 0, accuracy: 0, matches: 0 };
+            scoreboard[key].wins += 1;
+            scoreboard[key].accuracy += entry.accuracy || 0;
+            scoreboard[key].matches += 1;
+        });
+
+        const table = Object.entries(scoreboard)
+            .map(([name, stats]) => ({
+                name,
+                wins: stats.wins,
+                accuracy: Math.round(stats.accuracy / stats.matches)
+            }))
+            .sort((a, b) => b.wins - a.wins || b.accuracy - a.accuracy)
+            .slice(0, 5);
+
+        const list = document.getElementById('scoreboard-list');
+        if (list) {
+            list.innerHTML = '';
+            table.forEach(entry => {
+                const li = document.createElement('li');
+                li.textContent = `${entry.name} — Victorias: ${entry.wins}, Precisión: ${entry.accuracy}%`;
+                list.appendChild(li);
+            });
+            if (!table.length) {
+                const li = document.createElement('li');
+                li.textContent = 'No hay puntuaciones aún. Juega y tus resultados aparecerán aquí.';
+                list.appendChild(li);
+            }
+        }
+
+        const historyList = document.getElementById('score-history-list');
+        if (historyList) {
+            historyList.innerHTML = '';
+            history.slice(0, 10).forEach(entry => {
+                const li = document.createElement('li');
+                const minutes = String(Math.floor((entry.durationSeconds || 0) / 60)).padStart(2, '0');
+                const seconds = String((entry.durationSeconds || 0) % 60).padStart(2, '0');
+                li.textContent = `${entry.date.split('T')[0]} — ${entry.winnerName || entry.winner} — ${entry.mode} — ${minutes}:${seconds}`;
+                historyList.appendChild(li);
+            });
+        }
+    }
+
     updateBoardTitles() {
         const ownTitle = document.getElementById('own-board-title');
         const attackTitle = document.getElementById('attack-board-title');
         const ownLabel = this.gamePhase === 'battle'
-            ? (this.currentTurn === 'player1' ? 'Jugador 1' : 'Jugador 2')
-            : (this.activePlacementPlayer === 'player1' ? 'Jugador 1' : 'Jugador 2');
+            ? (this.currentTurn === 'player1' ? this.playerName : this.player2Name)
+            : (this.activePlacementPlayer === 'player1' ? this.playerName : this.player2Name);
 
         if (ownTitle) {
             ownTitle.textContent = this.gamePhase === 'battle'
@@ -444,7 +673,7 @@ class Game {
         }
         if (attackTitle) {
             attackTitle.textContent = this.gamePhase === 'battle'
-                ? `Ataque a ${this.currentTurn === 'player1' ? 'Jugador 2' : 'Jugador 1'}`
+                ? `Ataque a ${this.currentTurn === 'player1' ? this.player2Name : this.playerName}`
                 : 'Ataque';
         }
     }
@@ -479,7 +708,8 @@ class Game {
             this.shipPlacement.placeShipByIndex(shipIndex, row, col, orientation);
         });
 
-        this.updatePlayerStatusLabel(`Jugador ${player === 'player1' ? '1' : '2'} coloca sus barcos`);
+        const currentPlayerName = player === 'player1' ? this.playerName : this.player2Name;
+        this.updatePlayerStatusLabel(`${currentPlayerName} coloca sus barcos`);
         this.updateBoardTitles();
         const startBtn = document.getElementById('button');
         if (startBtn) {
@@ -500,7 +730,7 @@ class Game {
             if (this.activePlacementPlayer === 'player1') {
                 this.player1Board = this.playerBoard;
                 this.player1ShipPlacement = this.shipPlacement;
-                showInfoNotification('Jugador 1 listo. Ahora Jugador 2 coloca sus barcos.');
+                showInfoNotification(`${this.playerName} está listo. ${this.player2Name} coloca sus barcos.`);
                 this.setupPlacementBoard('player2');
                 return;
             }
@@ -545,10 +775,11 @@ class Game {
         showElement('turn-indicator');
         this.currentTurn = 'player';
         renderTurnIndicator('player');
+        this.updatePlayerStatusLabel(`${this.playerName} ataca ahora`);
         animateGameStart();
         showShotLogSection();
         startMatchTimer();
-        showInfoNotification('¡Batalla iniciada! Dispara en el tablero de ataque.');
+        showInfoNotification(`¡Batalla iniciada en ${this.difficulty}!. Dispara en el tablero de ataque.`);
     }
 
     startBattle() {
@@ -603,7 +834,8 @@ class Game {
         enemyBoard.create(enemyBoard.getMatrix(), (e) => this.handlePlayerShot(e), false);
 
         renderTurnIndicator(player);
-        this.updatePlayerStatusLabel(`Es el turno de ${player === 'player1' ? 'Jugador 1' : 'Jugador 2'}.`);
+        const currentPlayerName = player === 'player1' ? this.playerName : this.player2Name;
+        this.updatePlayerStatusLabel(`Es el turno de ${currentPlayerName}.`);
         this.updateBoardTitles();
     }
 
@@ -614,9 +846,10 @@ class Game {
         const overlay = document.createElement('div');
         overlay.id = 'pass-device-overlay';
         overlay.className = 'pause-overlay';
+        const nextName = nextPlayer === 'player1' ? this.playerName : this.player2Name;
         overlay.innerHTML = `
             <div class="pause-overlay__content">
-                <p>Pasa el dispositivo a ${nextPlayer === 'player1' ? 'Jugador 1' : 'Jugador 2'}</p>
+                <p>Pasa el dispositivo a ${nextName}</p>
                 <button type="button" id="pass-device-continue" class="btn btn-primary">Continuar</button>
             </div>
         `;
@@ -641,23 +874,67 @@ class Game {
     }
 
     togglePause() {
-        this.isPaused = !this.isPaused;
-        const btn = document.getElementById('pause-resume-btn');
-        if (btn) btn.textContent = this.isPaused ? 'Reanudar' : 'Pausar';
-
+        if (!this.gameStarted) return;
         if (this.isPaused) {
-            // show overlay
-            const overlay = document.createElement('div');
-            overlay.id = 'pause-overlay';
-            overlay.className = 'pause-overlay';
-            overlay.textContent = 'PAUSADO';
-            document.body.appendChild(overlay);
-            stopMatchTimer();
+            this.resumeGame();
         } else {
-            const overlay = document.getElementById('pause-overlay');
-            if (overlay) overlay.remove();
-            if (this.gameStarted) startMatchTimer();
+            this.pauseGame();
         }
+    }
+
+    pauseGame() {
+        if (this.isPaused || !this.gameStarted) return;
+        this.isPaused = true;
+        const btn = document.getElementById('pause-resume-btn');
+        if (btn) btn.textContent = 'Reanudar';
+        stopMatchTimer();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'pause-overlay';
+        overlay.className = 'pause-overlay';
+        overlay.innerHTML = `
+            <div class="pause-overlay__content">
+                <p>Juego en pausa</p>
+                <div class="pause-overlay__actions">
+                    <button type="button" id="pause-resume-control" class="btn btn-primary">Reanudar</button>
+                    <button type="button" id="pause-save-control" class="btn btn-outline-light">Guardar</button>
+                    <button type="button" id="pause-reset-control" class="btn btn-outline-danger">Reiniciar</button>
+                    <button type="button" id="pause-menu-control" class="btn btn-secondary">Menú principal</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        document.getElementById('pause-resume-control')?.addEventListener('click', () => this.resumeGame());
+        document.getElementById('pause-save-control')?.addEventListener('click', () => this.saveGameState());
+        document.getElementById('pause-reset-control')?.addEventListener('click', () => {
+            this.resetGame();
+            this.resumeGame();
+        });
+        document.getElementById('pause-menu-control')?.addEventListener('click', () => {
+            this.returnToMainMenu();
+        });
+    }
+
+    resumeGame() {
+        if (!this.isPaused) return;
+        this.isPaused = false;
+        const btn = document.getElementById('pause-resume-btn');
+        if (btn) btn.textContent = 'Pausar';
+        const overlay = document.getElementById('pause-overlay');
+        if (overlay) overlay.remove();
+        if (this.gameStarted) {
+            startMatchTimer();
+        }
+    }
+
+    returnToMainMenu() {
+        this.isPaused = false;
+        stopMatchTimer();
+        const overlay = document.getElementById('pause-overlay');
+        if (overlay) overlay.remove();
+        this.resetMatch();
+        this.showMainMenu();
     }
 
     // Save/Load
@@ -665,14 +942,19 @@ class Game {
         try {
             const payload = {
                 mode: this.mode,
+                gamePhase: this.gamePhase,
                 gameStarted: this.gameStarted,
                 isPaused: this.isPaused,
                 currentTurn: this.currentTurn,
                 stats: this.stats,
                 sunkCounts: this.sunkCounts,
                 elapsedSeconds: getElapsedSeconds(),
+                playerName: this.playerName,
+                player2Name: this.player2Name,
+                difficulty: this.difficulty,
                 playerBoard: this.playerBoard ? { matrix: this.playerBoard.getMatrix(), placedShips: this.playerBoard.placedShips } : null,
                 pcBoard: this.pcBoard ? { matrix: this.pcBoard.getMatrix(), placedShips: this.pcBoard.placedShips } : null,
+                player1Board: this.player1Board ? { matrix: this.player1Board.getMatrix(), placedShips: this.player1Board.placedShips } : null,
                 player2Board: this.player2Board ? { matrix: this.player2Board.getMatrix(), placedShips: this.player2Board.placedShips } : null,
                 playerShips: this.shipPlacement ? this.shipPlacement.getShips().map(s => ({ type: s.type, size: s.size, quantity: s.quantity })) : null,
                 pcShips: this.pcShipPlacement ? this.pcShipPlacement.getShips().map(s => ({ type: s.type, size: s.size, quantity: s.quantity })) : null,
@@ -697,14 +979,33 @@ class Game {
             this.resetMatch();
 
             this.mode = data.mode || 'pve';
+            this.gamePhase = data.gamePhase || 'setup';
+            this.playerName = data.playerName || this.playerName;
+            this.player2Name = data.player2Name || this.player2Name;
+            this.difficulty = data.difficulty || this.difficulty;
             this.gameStarted = !!data.gameStarted;
             this.isPaused = !!data.isPaused;
-            this.currentTurn = data.currentTurn || 'player';
+            this.currentTurn = data.currentTurn || (this.mode === 'pvp' ? 'player1' : 'player');
             this.stats = data.stats || this.stats;
             this.sunkCounts = data.sunkCounts || this.sunkCounts;
 
-            // Restore boards
-            if (data.playerBoard && this.playerBoard) {
+            this.updateModeToggleButton();
+            this.updatePlayerStatusLabel('Partida cargada');
+
+            if (this.mode === 'pvp' && data.player1Board && data.player2Board) {
+                this.player1Board = new Board(this.boardElement, 'player1', null);
+                this.player1Board.create(data.player1Board.matrix, null, false);
+                this.player1Board.placedShips = data.player1Board.placedShips || [];
+
+                this.player2Board = new Board(this.boardAttackElement, 'player2', (e) => this.handlePlayerShot(e));
+                this.player2Board.create(data.player2Board.matrix, (e) => this.handlePlayerShot(e), false);
+                this.player2Board.placedShips = data.player2Board.placedShips || [];
+
+                if (this.gameStarted && this.gamePhase === 'battle') {
+                    showAttackBoardSection();
+                    this.renderPvPTurn(this.currentTurn);
+                }
+            } else if (data.playerBoard && this.playerBoard) {
                 const mat = data.playerBoard.matrix;
                 for (let r = 0; r < mat.length; r++) {
                     for (let c = 0; c < mat[r].length; c++) {
@@ -726,7 +1027,6 @@ class Game {
                 this.pcBoard.placedShips = data.pcBoard.placedShips || [];
             }
 
-            // Restore shot log
             const log = document.getElementById('shot-log');
             if (log) {
                 log.innerHTML = '';
@@ -735,7 +1035,12 @@ class Game {
                 });
             }
 
-            if (this.isPaused) this.togglePause();
+            const welcome = document.getElementById('welcome-screen');
+            if (welcome) welcome.classList.add('welcome-screen--hidden');
+            document.getElementById('game-app')?.classList.remove('hidden');
+
+            if (this.isPaused) this.pauseGame();
+            else if (this.gameStarted && !this.isPaused) startMatchTimer();
 
             showInfoNotification('Partida cargada');
         } catch (e) {
@@ -747,9 +1052,29 @@ class Game {
     // Record match to history storage
     recordMatchHistory(winner, durationSeconds) {
         try {
+            const winnerName = winner === 'player1'
+                ? this.playerName
+                : winner === 'player2'
+                    ? this.player2Name
+                    : winner === 'player'
+                        ? this.playerName
+                        : 'PC';
             const raw = localStorage.getItem(this.matchHistoryKey);
             const arr = raw ? JSON.parse(raw) : [];
-            arr.unshift({ winner, durationSeconds, date: new Date().toISOString() });
+            const accuracy = this.stats.totalShots ? Math.round((this.stats.hits / this.stats.totalShots) * 100) : 0;
+            arr.unshift({
+                winner,
+                winnerName,
+                playerName: this.playerName,
+                player2Name: this.player2Name,
+                mode: this.mode,
+                difficulty: this.difficulty,
+                totalShots: this.stats.totalShots,
+                hits: this.stats.hits,
+                accuracy,
+                durationSeconds,
+                date: new Date().toISOString()
+            });
             localStorage.setItem(this.matchHistoryKey, JSON.stringify(arr.slice(0,50)));
             this.loadMatchHistory();
         } catch (e) {
@@ -769,7 +1094,8 @@ class Game {
                 const li = document.createElement('li');
                 const minutes = String(Math.floor((entry.durationSeconds||0)/60)).padStart(2,'0');
                 const seconds = String((entry.durationSeconds||0)%60).padStart(2,'0');
-                li.textContent = `${entry.date.split('T')[0]} — ${entry.winner} — ${minutes}:${seconds}`;
+                const winnerLabel = entry.winnerName || entry.winner || 'Desconocido';
+                li.textContent = `${entry.date.split('T')[0]} — ${winnerLabel} — ${entry.mode || 'pve'} — ${minutes}:${seconds}`;
                 list.appendChild(li);
             });
         } catch (e) {
@@ -836,17 +1162,17 @@ class Game {
         // Determine target board depending on mode/turn
         let targetBoard = this.pcBoard;
         let targetType = 'pc';
-        let actorLabel = 'Tú';
+        let actorLabel = this.playerName;
 
         if (this.mode === 'pvp') {
             if (this.currentTurn === 'player1') {
                 targetBoard = this.player2Board;
                 targetType = 'player2';
-                actorLabel = 'Jugador 1';
+                actorLabel = this.playerName;
             } else if (this.currentTurn === 'player2') {
                 targetBoard = this.player1Board;
                 targetType = 'player1';
-                actorLabel = 'Jugador 2';
+                actorLabel = this.player2Name;
             }
         }
 
@@ -983,7 +1309,8 @@ class Game {
                 accuracy,
                 elapsedSeconds: getElapsedSeconds()
             },
-            () => this.resetMatch()
+            () => this.resetMatch(),
+            () => this.returnToMainMenu()
         );
     }
 
@@ -991,6 +1318,8 @@ class Game {
         this.gameStarted = false;
         this.stats = { totalShots: 0, hits: 0 };
         this.sunkCounts = { player: 0, enemy: 0 };
+        this.gamePhase = 'setup';
+        this.activePlacementPlayer = 'player1';
         resetCellZoom();
 
         this.boardElement.innerHTML = '';
@@ -1006,6 +1335,11 @@ class Game {
         hideElement('turn-indicator');
         updateSunkCounters(0, 0);
         stopMatchTimer();
+
+        this.player1Board = null;
+        this.player1ShipPlacement = null;
+        this.player2Board = null;
+        this.player2ShipPlacement = null;
 
         this.playerBoard = new Board(
             this.boardElement,
