@@ -351,10 +351,34 @@ class Game {
 // Game Initialization & Event Binding
 // ============================================
 const game = new Game();
-game.initialize();
 
-// FIX E1: CRITICAL - Bind the start button to game start function
-// This was the main reason the game wasn't starting!
-document.querySelector("#startGameButton").addEventListener("click", () => {
-    game.startGame();
-});
+function bindGameControls() {
+    const startButton = document.querySelector("#startGameButton");
+    if (startButton) {
+        startButton.addEventListener("click", () => {
+            game.startGame();
+        });
+    } else {
+        console.error("Ocean Zero Warfare: no se encontró el botón de inicio de batalla.");
+    }
+
+    window.addEventListener("gameStartRequested", () => {
+        if (!game.gameStarted) {
+            game.startGame();
+        }
+    });
+
+    window.addEventListener("gameRestartRequested", () => {
+        window.location.reload();
+    });
+}
+
+if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", () => {
+        game.initialize();
+        bindGameControls();
+    });
+} else {
+    game.initialize();
+    bindGameControls();
+}

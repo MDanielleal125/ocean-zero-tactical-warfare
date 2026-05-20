@@ -1,98 +1,151 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <link
-        rel="stylesheet"
-        href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
-        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
-        crossorigin="anonymous"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+          crossorigin="anonymous">
     <link rel="stylesheet" href="./css/styles.css">
-
-    <title>BattleShip Game</title>
-
+    <title>Ocean Zero Warfare</title>
 </head>
-
-<body>
-
-    <h1>BattleShip</h1>
-    <h3>Select ship positions</h3>
-
-    <div class="container">
-
-        <div class="row">
-
-            <div class="col">
-                <div id="board"></div>
+<body class="theme-light">
+    <div class="game-shell">
+        <header class="game-header container-fluid">
+            <div class="brand-block">
+                <span class="eyebrow">BattleShip Arena</span>
+                <h1>Ocean Zero Warfare</h1>
+                <p class="subtitle">Posiciona tu flota, ataca con precisión y domina el océano.</p>
             </div>
-
-            <div class="col">
-                <div id="boardAttack"></div>
+            <div class="header-actions">
+                <button id="theme-toggle" class="btn btn-secondary">Modo oscuro</button>
+                <button id="muteButton" class="btn btn-secondary">🔊 Sonido</button>
             </div>
+        </header>
 
-        </div>
+        <section id="welcome-screen" class="welcome-screen">
+            <div class="welcome-card">
+                <span class="welcome-label">Nuevo Desafío</span>
+                <h2>Ocean Zero Warfare</h2>
+                <p>Prepara tu flota, selecciona orientación y derrota al enemigo en una batalla naval estratégica.</p>
+                <button id="welcome-start-btn" class="btn btn-primary btn-lg">Iniciar batalla</button>
+            </div>
+        </section>
 
-        <h4>Your ships:</h4>
+        <main class="game-stage container-fluid">
+            <section class="board-panel" id="boards-container">
+                <article class="board-frame board-frame--player">
+                    <div class="board-frame__header">
+                        <div>
+                            <span class="board-chip board-chip--player">Jugador</span>
+                            <h2>Mi Flota</h2>
+                        </div>
+                        <span class="board-status">Posiciona tus barcos</span>
+                    </div>
+                    <div class="board-coordinates board-coordinates--cols">
+                        <span></span>
+                        <span>A</span><span>B</span><span>C</span><span>D</span><span>E</span>
+                        <span>F</span><span>G</span><span>H</span><span>I</span><span>J</span>
+                    </div>
+                    <div class="board-wrapper">
+                        <div id="board" class="board-grid"></div>
+                    </div>
+                </article>
 
-        <div id="ships" class="row">
+                <article class="board-frame board-frame--enemy">
+                    <div class="board-frame__header">
+                        <div>
+                            <span class="board-chip board-chip--enemy">Enemigo</span>
+                            <h2>Objetivo</h2>
+                        </div>
+                        <span class="board-status">Dispara al enemigo</span>
+                    </div>
+                    <div class="board-coordinates board-coordinates--cols">
+                        <span></span>
+                        <span>A</span><span>B</span><span>C</span><span>D</span><span>E</span>
+                        <span>F</span><span>G</span><span>H</span><span>I</span><span>J</span>
+                    </div>
+                    <div class="board-wrapper board-wrapper--attack">
+                        <div id="boardAttack" class="board-grid board-grid--attack"></div>
+                    </div>
+                </article>
+            </section>
 
-            <div class="col">
+            <aside class="sidebar-panel">
+                <section class="panel panel--status">
+                    <div class="panel-title-row">
+                        <h3>Control</h3>
+                        <span class="badge badge-pill badge-info">UI</span>
+                    </div>
+                    <div class="status-group">
+                        <div class="status-card">
+                            <span class="status-label">Turno Actual</span>
+                            <strong id="turn-indicator">Jugador</strong>
+                        </div>
+                        <div class="status-card">
+                            <span class="status-label">Barcos hundidos</span>
+                            <div class="status-values">
+                                <span>Jugador <strong id="player-sunk-count">0</strong></span>
+                                <span>PC <strong id="enemy-sunk-count">0</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="action-controls">
+                        <button id="startGameButton" class="btn btn-primary">Iniciar batalla</button>
+                        <button id="restartGameButton" class="btn btn-outline-light">Nueva partida</button>
+                    </div>
+                </section>
 
-                <div>
-                    <span>Carrier</span><br>
-                    <span>Size: 5</span>
+                <section class="panel panel--ships">
+                    <div class="panel-title-row">
+                        <h3>Flota</h3>
+                        <span class="hint">Selecciona orientación</span>
+                    </div>
+                    <div id="ships" class="ship-grid">
+                    <article class="ship-card">
+                        <div class="ship-card__info">
+                            <span class="ship-card__name">Carrier</span>
+                            <span class="ship-card__detail">Size: 5</span>
+                        </div>
+                        <div class="position"></div>
+                    </article>
+                    <article class="ship-card">
+                        <div class="ship-card__info">
+                            <span class="ship-card__name">Battleship</span>
+                            <span class="ship-card__detail">Size: 4</span>
+                        </div>
+                        <div class="position"></div>
+                    </article>
+                    <article class="ship-card">
+                        <div class="ship-card__info">
+                            <span class="ship-card__name">Submarine</span>
+                            <span class="ship-card__detail">Size: 3</span>
+                        </div>
+                        <div class="position"></div>
+                    </article>
+                    <article class="ship-card">
+                        <div class="ship-card__info">
+                            <span class="ship-card__name">Destroyer</span>
+                            <span class="ship-card__detail">Size: 2</span>
+                        </div>
+                        <div class="position"></div>
+                    </article>
                 </div>
+            </section>
 
-                <div class="position"></div>
-
-            </div>
-
-            <div class="col">
-
-                <div>
-                    <span>Battleship</span><br>
-                    <span>Size: 4</span>
-                </div>
-
-                <div class="position"></div>
-
-            </div>
-
-            <div class="col">
-
-                <div>
-                    <span>Submarine</span><br>
-                    <span>Size: 3</span>
-                </div>
-
-                <div class="position"></div>
-
-            </div>
-
-            <div class="col">
-
-                <div>
-                    <span>Destroyer</span><br>
-                    <span>Size: 2</span>
-                </div>
-
-                <div class="position"></div>
-
-            </div>
-
-        </div>
-
-        <div class="row">
-            <button id="startGameButton">
-                Start Game
-            </button>
-        </div>
-
+                <section class="panel panel--log">
+                    <div class="panel-title-row">
+                        <h3>Registro</h3>
+                        <button id="board-zoom-in" class="btn btn-sm btn-secondary">+</button>
+                        <button id="board-zoom-out" class="btn btn-sm btn-secondary">-</button>
+                    </div>
+                    <ul id="shot-log" class="shot-log"></ul>
+                </section>
+            </aside>
+        </main>
     </div>
 
+    <script type="module" src="./js/ui/uiInit.js"></script>
     <script type="module" src="./js/main.js"></script>
-
 </body>
 </html>
