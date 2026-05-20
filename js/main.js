@@ -742,9 +742,16 @@ class Game {
     }
 
     async requestStartGame() {
+        console.log('Ready clicked');
+        console.log('Current player:', this.activePlacementPlayer);
+        console.log('Current phase:', this.gamePhase);
+        console.log('Battle started:', this.gameStarted);
+        console.log('Game mode:', this.mode);
+        console.log('All ships placed:', this.shipPlacement?.allShipsPlaced?.() ?? false);
+
         if (this.gameStarted) return;
 
-        if (!this.shipPlacement.allShipsPlaced()) {
+        if (!this.shipPlacement?.allShipsPlaced()) {
             showErrorNotification('Faltan barcos por colocar');
             return;
         }
@@ -986,6 +993,7 @@ class Game {
                 pcBoard: this.pcBoard ? { matrix: this.pcBoard.getMatrix(), placedShips: this.pcBoard.placedShips } : null,
                 player1Board: this.player1Board ? { matrix: this.player1Board.getMatrix(), placedShips: this.player1Board.placedShips } : null,
                 player2Board: this.player2Board ? { matrix: this.player2Board.getMatrix(), placedShips: this.player2Board.placedShips } : null,
+                activePlacementPlayer: this.activePlacementPlayer,
                 playerShips: this.shipPlacement ? this.shipPlacement.getShips().map(s => ({ type: s.type, size: s.size, quantity: s.quantity })) : null,
                 pcShips: this.pcShipPlacement ? this.pcShipPlacement.getShips().map(s => ({ type: s.type, size: s.size, quantity: s.quantity })) : null,
                 shotLog: Array.from(document.querySelectorAll('#shot-log .shot-log__item')).map(li => li.textContent || '')
@@ -1005,8 +1013,9 @@ class Game {
                 return;
             }
             const data = JSON.parse(raw);
-            // Reset current UI
-            this.resetMatch();
+
+            this.removeActiveOverlays();
+            this.resetMatch({ silent: true });
 
             this.mode = data.mode || 'pve';
             this.gamePhase = data.gamePhase || 'setup';
@@ -1015,59 +1024,34 @@ class Game {
             this.difficulty = data.difficulty || this.difficulty;
             this.gameStarted = !!data.gameStarted;
             this.isPaused = !!data.isPaused;
+            this.activePlacementPlayer = data.activePlacementPlayer || 'player1';
             this.currentTurn = data.currentTurn || (this.mode === 'pvp' ? 'player1' : 'player');
             this.stats = data.stats || this.stats;
             this.sunkCounts = data.sunkCounts || this.sunkCounts;
 
+            console.log('Game loaded');
+            console.log('Current player:', this.activePlacementPlayer);
+            console.log('Current phase:', this.gamePhase);
+            console.log('Battle started:', this.gameStarted);
+            console.log('Game mode:', this.mode);
+            console.log('Is paused:', this.isPaused);
+
             this.updateModeToggleButton();
-            this.updatePlayerStatusLabel('Partida cargada');
 
-            if (this.mode === 'pvp' && data.player1Board && data.player2Board) {
-                this.player1Board = new Board(this.boardElement, 'player1', null);
-                this.player1Board.create(data.player1Board.matrix, null, false);
-                this.player1Board.placedShips = data.player1Board.placedShips || [];
-
-                this.player2Board = new Board(this.boardAttackElement, 'player2', (e) => this.handlePlayerShot(e));
-                this.player2Board.create(data.player2Board.matrix, (e) => this.handlePlayerShot(e), false);
-                this.player2Board.placedShips = data.player2Board.placedShips || [];
-
-                if (this.gameStarted && this.gamePhase === 'battle') {
-                    showAttackBoardSection();
-                    this.renderPvPTurn(this.currentTurn);
-                }
-            } else if (data.playerBoard && this.playerBoard) {
-                const mat = data.playerBoard.matrix;
-                for (let r = 0; r < mat.length; r++) {
-                    for (let c = 0; c < mat[r].length; c++) {
-                        this.playerBoard.matrix[r][c] = mat[r][c];
-                        updateCellState(r, c, 'player', mat[r][c] || '');
-                    }
-                }
-                this.playerBoard.placedShips = data.playerBoard.placedShips || [];
+            if (this.gameStarted) {
+                this.applyLoadedBattleState(data);
+            } else {
+                this.applyLoadedSetupState(data);
             }
 
-            if (data.pcBoard && this.pcBoard) {
-                const mat = data.pcBoard.matrix;
-                for (let r = 0; r < mat.length; r++) {
-                    for (let c = 0; c < mat[r].length; c++) {
-                        this.pcBoard.matrix[r][c] = mat[r][c];
-                        updateCellState(r, c, 'pc', mat[r][c] || '');
-                    }
-                }
-                this.pcBoard.placedShips = data.pcBoard.placedShips || [];
-            }
-
-            const log = document.getElementById('shot-log');
-            if (log) {
-                log.innerHTML = '';
-                (data.shotLog || []).forEach(line => {
-                    appendShotLogEntry(line);
-                });
-            }
+            this.restoreShotLog(data.shotLog);
 
             const welcome = document.getElementById('welcome-screen');
             if (welcome) welcome.classList.add('welcome-screen--hidden');
             document.getElementById('game-app')?.classList.remove('hidden');
+            ['main-menu', 'settings-screen', 'scores-screen', 'credits-screen'].forEach(id => {
+                document.getElementById(id)?.classList.add('hidden');
+            });
 
             if (this.isPaused) this.pauseGame();
             else if (this.gameStarted && !this.isPaused) startMatchTimer();
@@ -1078,11 +1062,207 @@ class Game {
             syncMusicFromGameState({ inMenu: false, inBattle });
             if (this.isPaused) setMusicPaused(true);
 
+            this.updatePlayerStatusLabel('Partida cargada');
             showInfoNotification('Partida cargada');
         } catch (e) {
             console.error(e);
             showErrorNotification('Error cargando partida');
         }
+    }
+
+    applyLoadedSetupState(data) {
+        this.gamePhase = 'setup';
+        this.gameStarted = false;
+
+        if (this.mode === 'pvp') {
+            const placementPlayer = data.activePlacementPlayer || 'player1';
+
+            if (placementPlayer === 'player2' && data.player1Board) {
+                const holder = document.createElement('div');
+                this.player1Board = new Board(holder, 'player1', null);
+                this.player1Board.matrix = data.player1Board.matrix.map(row => [...row]);
+                this.player1Board.placedShips = [...(data.player1Board.placedShips || [])];
+            }
+
+            this.setupPlacementBoard(placementPlayer);
+
+            const boardSnapshot = placementPlayer === 'player2'
+                ? data.playerBoard
+                : (data.playerBoard || data.player1Board);
+
+            if (boardSnapshot) {
+                this.restoreBoardSnapshot(this.playerBoard, boardSnapshot, true);
+            }
+        } else {
+            this.setupPlacementBoard('player1');
+            if (data.playerBoard) {
+                this.restoreBoardSnapshot(this.playerBoard, data.playerBoard, true);
+            }
+        }
+
+        this.restoreShipPlacementFromSave(data);
+        this.updateBoardTitles();
+
+        const startBtn = document.getElementById('button');
+        if (startBtn) {
+            const p = this.activePlacementPlayer;
+            startBtn.textContent = this.mode === 'pvp' && p === 'player1'
+                ? 'Listo Jugador 1'
+                : (this.mode === 'pvp' && p === 'player2' ? 'Iniciar batalla' : 'Iniciar batalla');
+        }
+        this.updateStartButtonState();
+    }
+
+    applyLoadedBattleState(data) {
+        if (this.mode === 'pvp' && data.player1Board && data.player2Board) {
+            this.player1Board = this.buildBoardFromSave(
+                this.boardElement,
+                'player1',
+                data.player1Board,
+                null
+            );
+            this.player2Board = this.buildBoardFromSave(
+                this.boardAttackElement,
+                'player2',
+                data.player2Board,
+                (e) => this.handlePlayerShot(e)
+            );
+            this.gamePhase = 'battle';
+            showAttackBoardSection();
+            this.renderPvPTurn(this.currentTurn);
+            updateSunkCounters(this.sunkCounts.player, this.sunkCounts.enemy);
+
+            const startBtn = document.getElementById('button');
+            if (startBtn) {
+                startBtn.disabled = true;
+                startBtn.textContent = 'En juego';
+            }
+            return;
+        }
+
+        if (this.mode === 'pve') {
+            this.gamePhase = 'battle';
+
+            if (data.playerBoard) {
+                this.setupPlacementBoard('player1');
+                this.restoreBoardSnapshot(this.playerBoard, data.playerBoard, true);
+                this.playerBoard.clickHandler = null;
+            }
+
+            if (data.pcBoard) {
+                showAttackBoardSection();
+                this.pcBoard = new Board(
+                    this.boardAttackElement,
+                    'pc',
+                    (e) => this.handlePlayerShot(e)
+                );
+                this.pcBoard.create();
+                this.restoreBoardSnapshot(this.pcBoard, data.pcBoard, true);
+            }
+
+            disablePlacementPreview();
+            showElement('turn-indicator');
+            renderTurnIndicator(this.currentTurn === 'pc' ? 'pc' : 'player');
+            showShotLogSection();
+            updateSunkCounters(this.sunkCounts.player, this.sunkCounts.enemy);
+
+            const startBtn = document.getElementById('button');
+            if (startBtn) {
+                startBtn.disabled = true;
+                startBtn.textContent = 'En juego';
+            }
+        }
+    }
+
+    buildBoardFromSave(element, boardType, snapshot, clickHandler) {
+        const board = new Board(element, boardType, clickHandler);
+        board.create(snapshot.matrix, clickHandler, true);
+        board.placedShips = snapshot.placedShips ? [...snapshot.placedShips] : [];
+        return board;
+    }
+
+    restoreBoardSnapshot(board, snapshot, revealShips = true) {
+        if (!board || !snapshot?.matrix) return;
+
+        const mat = snapshot.matrix;
+        for (let r = 0; r < mat.length; r++) {
+            for (let c = 0; c < mat[r].length; c++) {
+                const state = mat[r][c];
+                board.matrix[r][c] = state;
+
+                if (state === 'ship' && !revealShips) continue;
+
+                if (state === 'ship') {
+                    updateCellState(r, c, board.boardType, 'ship');
+                    const cell = document.getElementById(`${r},${c},${board.boardType}`);
+                    if (cell) cell.classList.add('selected');
+                } else if (state) {
+                    updateCellState(r, c, board.boardType, state);
+                }
+            }
+        }
+
+        board.placedShips = snapshot.placedShips ? [...snapshot.placedShips] : [];
+    }
+
+    restoreShipPlacementFromSave(data) {
+        if (!this.shipPlacement) return;
+
+        const boardType = this.mode === 'pvp'
+            ? (this.activePlacementPlayer || 'player1')
+            : 'player1';
+
+        if (data.playerShips?.length) {
+            data.playerShips.forEach((saved, index) => {
+                const ship = this.shipPlacement.ships[index];
+                if (ship && ship.type === saved.type) {
+                    ship.quantity = saved.quantity;
+                }
+            });
+        } else if (this.playerBoard?.placedShips?.length) {
+            this.syncShipQuantitiesFromPlacedShips(this.shipPlacement, this.playerBoard.placedShips);
+        }
+
+        renderShipSelectors(
+            this.shipPlacement.getShips(),
+            (index, orientation) => this.shipPlacement.selectShip(index, orientation)
+        );
+
+        enablePlacementPreview(
+            boardType,
+            () => this.shipPlacement.selectedShip,
+            () => this.playerBoard.getMatrix()
+        );
+
+        enableShipDragDrop(boardType, (shipIndex, row, col, orientation) => {
+            this.shipPlacement.placeShipByIndex(shipIndex, row, col, orientation);
+        });
+
+        this.shipPlacement.ships.forEach((ship, index) => {
+            updateShipQuantityDisplay(index, ship.quantity);
+        });
+    }
+
+    syncShipQuantitiesFromPlacedShips(shipPlacement, placedShips) {
+        const initialCounts = { carrier: 1, battleship: 1, submarine: 1, destroyer: 2 };
+        const placedCounts = {};
+
+        placedShips.forEach(record => {
+            placedCounts[record.type] = (placedCounts[record.type] || 0) + 1;
+        });
+
+        shipPlacement.ships.forEach(ship => {
+            const initial = initialCounts[ship.type] || 0;
+            const placed = placedCounts[ship.type] || 0;
+            ship.quantity = Math.max(0, initial - placed);
+        });
+    }
+
+    restoreShotLog(shotLog) {
+        const log = document.getElementById('shot-log');
+        if (!log) return;
+        log.innerHTML = '';
+        (shotLog || []).forEach(line => appendShotLogEntry(line));
     }
 
     // Record match to history storage
@@ -1565,7 +1745,7 @@ class Game {
         return true;
     }
 
-    resetMatch() {
+    resetMatch(options = {}) {
         this.gameStarted = false;
         this.stats = { totalShots: 0, hits: 0 };
         this.sunkCounts = { player: 0, enemy: 0 };
@@ -1612,11 +1792,13 @@ class Game {
         );
 
         const gameVisible = !document.getElementById('game-app')?.classList.contains('hidden');
-        if (gameVisible) {
+        if (gameVisible && !options.silent) {
             playSelectionMusic();
         }
 
-        showInfoNotification('Nueva partida — coloca tu flota');
+        if (!options.silent) {
+            showInfoNotification('Nueva partida — coloca tu flota');
+        }
     }
 
     // Full reset: clears save and UI state without reloading page
