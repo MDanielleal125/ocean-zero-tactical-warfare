@@ -174,6 +174,7 @@ class Game {
         this.playerBoard.create();
         this.shipPlacement = new ShipPlacement(this.playerBoard);
         this.createShipSelectors();
+        SceneManager.changeScene(SCENES.LOBBY);
     }
 
     createShipSelectors() {
@@ -223,6 +224,7 @@ class Game {
         this.pcShipPlacement = new ShipPlacement(this.pcBoard);
         this.placePCShipsRandomly();
         document.querySelector("#button").disabled = true;
+        SceneManager.changeScene(SCENES.BATTLE);
     }
 
     placePCShipsRandomly() {
@@ -293,8 +295,10 @@ class Game {
             }
         }
         if (player === "pc") {
+            SceneManager.changeScene(SCENES.DEFEAT);
             alert("Ha ganado el PC");
         } else {
+            SceneManager.changeScene(SCENES.VICTORY);
             alert("GANASTE!!!");
         }
     }
